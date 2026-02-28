@@ -33,8 +33,8 @@ FrogPilotNavigationPanel::FrogPilotNavigationPanel(FrogPilotSettingsWindow *pare
   searchInput->setCheckedButton(params.getInt("SearchInput"));
   settingsList->addItem(searchInput);
 
-  createKeyControl(amapKeyControl1, tr("Amap Key #1"), "AMapKey1", "", 39, settingsList);
-  createKeyControl(amapKeyControl2, tr("Amap Key #2"), "AMapKey2", "", 39, settingsList);
+  createKeyControl(amapKeyControl1, tr("Amap Key #1"), "AMapKey1", "", 32, settingsList);
+  createKeyControl(amapKeyControl2, tr("Amap Key #2"), "AMapKey2", "", 32, settingsList);
 
   createKeyControl(publicMapboxKeyControl, tr("Public Mapbox Key"), "MapboxPublicKey", "pk.", 80, settingsList);
   createKeyControl(secretMapboxKeyControl, tr("Secret Mapbox Key"), "MapboxSecretKey", "sk.", 80, settingsList);
