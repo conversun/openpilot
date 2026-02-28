@@ -86,12 +86,19 @@ export function NavKeys() {
 
   const getDeleteLabel = (kind) => {
     switch (kind) {
-      case "amap1": return "高德 Key 1"
-      case "amap2": return "高德 Key 2"
+      case "amap1": return "高德Key"
+      case "amap2": return "高德密钥"
       case "public": return "Mapbox 公钥"
       case "secret": return "Mapbox 私钥"
       default: return kind
     }
+  }
+
+  const labelMap = {
+    amap1: "高德Key",
+    amap2: "高德密钥",
+    public: "Public",
+    secret: "Secret",
   }
 
   const api = {
@@ -218,7 +225,7 @@ export function NavKeys() {
 
         ${kinds.map(kind => {
           const keyMeta = meta[kind]
-          const label = kind[0].toUpperCase() + kind.slice(1).replace(/[0-9]/, d => " " + d)
+          const label = labelMap[kind] || kind[0].toUpperCase() + kind.slice(1).replace(/[0-9]/, d => " " + d)
 
           return html`
             <label class="navkeys-label" for="${kind}-key">${label} 密钥</label>

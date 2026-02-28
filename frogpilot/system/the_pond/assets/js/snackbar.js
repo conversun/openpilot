@@ -1,6 +1,11 @@
 function showSnackbar(msg, level, timeout = 3500) {
   const wrapper = document.getElementById("snackbar_wrapper")
 
+  // Skip duplicate: if the same message is already visible, don't stack another
+  for (const child of wrapper.children) {
+    if (child.innerHTML === msg && child.style.opacity !== "0") return
+  }
+
   // Ensure max 2 snackbars are visible
   if (wrapper.children.length >= 2) {
     const first = wrapper.children[0]
