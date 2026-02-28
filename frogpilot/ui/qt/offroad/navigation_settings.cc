@@ -38,8 +38,8 @@ FrogPilotNavigationPanel::FrogPilotNavigationPanel(FrogPilotSettingsWindow *pare
   searchInput->setCheckedButton(params.getInt("SearchInput"));
   settingsList->addItem(searchInput);
 
-  createKeyControl(amapKeyControl1, tr("Amap Key #1"), "AMapKey1", "", 39, settingsList);
-  createKeyControl(amapKeyControl2, tr("Amap Key #2"), "AMapKey2", "", 39, settingsList);
+  createKeyControl(amapKeyControl1, tr("Amap Key #1"), "AMapKey1", "", 32, settingsList);
+  createKeyControl(amapKeyControl2, tr("Amap Key #2"), "AMapKey2", "", 32, settingsList);
 
   publicMapboxKeyControl = new FrogPilotButtonsControl(tr("Public Mapbox Key"), tr("<b>Manage your Public Mapbox Key.</b>"), "", {tr("ADD"), tr("TEST")});
   QObject::connect(publicMapboxKeyControl, &FrogPilotButtonsControl::buttonClicked, [this](int id) {
