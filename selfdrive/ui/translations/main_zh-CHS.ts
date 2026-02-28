@@ -123,11 +123,11 @@
     </message>
     <message>
         <source>SPEED</source>
-        <translation>SPEED</translation>
+        <translation>速度</translation>
     </message>
     <message>
         <source>LIMIT</source>
-        <translation>LIMIT</translation>
+        <translation>限速</translation>
     </message>
 </context>
 <context>
@@ -227,7 +227,7 @@
     </message>
     <message>
         <source>LONG %</source>
-        <translation type="gpt-5-generated">LONG %</translation>
+        <translation type="gpt-5-generated">纵向 %</translation>
     </message>
     <message>
         <source>MAX ACCEL</source>
@@ -4938,7 +4938,7 @@ This may take up to a minute.</source>
     <name>Sidebar</name>
     <message>
         <source>CONNECT</source>
-        <translation>CONNECT</translation>
+        <translation>连接</translation>
     </message>
     <message>
         <source>OFFLINE</source>
@@ -5341,59 +5341,59 @@ This may take up to a minute.</source>
     </message>
     <message>
         <source>Blended Acc (Experimental)</source>
-        <translation type="unfinished"></translation>
+        <translation>混合 ACC（实验性）</translation>
     </message>
     <message>
         <source>Blend stock MRCC and Experimental Mode longitudinal control.</source>
-        <translation type="unfinished"></translation>
+        <translation>融合原厂 MRCC 与实验模式纵向控制。</translation>
     </message>
     <message>
         <source>Torque Interceptor Installed</source>
-        <translation type="unfinished"></translation>
+        <translation>已安装扭矩拦截器</translation>
     </message>
     <message>
         <source>Enable the torque interceptor to control the steering wheel.</source>
-        <translation type="unfinished"></translation>
+        <translation>启用扭矩拦截器以控制方向盘。</translation>
     </message>
     <message>
         <source>Radar Interceptor Installed</source>
-        <translation type="unfinished"></translation>
+        <translation>已安装雷达拦截器</translation>
     </message>
     <message>
         <source>Enable if you have installed the radar Iterceptor.</source>
-        <translation type="unfinished"></translation>
+        <translation>若已安装雷达拦截器，请启用。</translation>
     </message>
     <message>
         <source>Car Does not have stock MRCC</source>
-        <translation type="unfinished"></translation>
+        <translation>车辆不具备原厂 MRCC</translation>
     </message>
     <message>
         <source>Enable if your car does not have stock MRCC.</source>
-        <translation type="unfinished"></translation>
+        <translation>若你的车辆没有原厂 MRCC，请启用。</translation>
     </message>
     <message>
         <source>Car Does not have stock FSC</source>
-        <translation type="unfinished"></translation>
+        <translation>车辆不具备原厂 FSC</translation>
     </message>
     <message>
         <source>Enable if your car does not have stock FSC.</source>
-        <translation type="unfinished"></translation>
+        <translation>若你的车辆没有原厂 FSC，请启用。</translation>
     </message>
     <message>
         <source>Manual Transmission</source>
-        <translation type="unfinished"></translation>
+        <translation>手动变速箱</translation>
     </message>
     <message>
         <source>Enable if your is a manual.</source>
-        <translation type="unfinished"></translation>
+        <translation>若车辆为手动挡，请启用。</translation>
     </message>
     <message>
         <source>Record and Upload Road Cameras</source>
-        <translation type="unfinished"></translation>
+        <translation>录制并上传道路摄像头数据</translation>
     </message>
     <message>
         <source>Upload data from the road cameras.</source>
-        <translation type="unfinished"></translation>
+        <translation>上传道路摄像头数据。</translation>
     </message>
 </context>
 <context>

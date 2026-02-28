@@ -6,7 +6,7 @@ function DiskUsage(disk) {
 
   return html`
     <div class="disk">
-      <p>${disk.used} used of ${disk.size}</p>
+      <p>已用 ${disk.used} / ${disk.size}</p>
       <div class="progress">
         <div
           class="bar"
@@ -31,26 +31,26 @@ function DriveStat(title, stats = {}, defaultUnit) {
   return html`
     <div class="drivingStat">
       <h2>${title}</h2>
-      <div><p>${format(stats.drives)}</p><p>drives</p></div>
+      <div><p>${format(stats.drives)}</p><p>次行程</p></div>
       <div><p>${format(stats.distance)}</p><p>${stats.unit ?? defaultUnit}</p></div>
-      <div><p>${format(stats.hours)}</p><p>hours</p></div>
+      <div><p>${format(stats.hours)}</p><p>小时</p></div>
     </div>
   `;
 }
 
 function renderSoftwareInfo(info = {}) {
   const fields = [
-    ["Branch Name", info.branchName],
-    ["Build", info.buildEnvironment],
-    ["Commit Hash", info.commitHash],
-    ["Fork Maintainer", info.forkMaintainer],
-    ["Update Available", info.updateAvailable],
-    ["Version Date", info.versionDate],
+    ["分支名称", info.branchName],
+    ["构建环境", info.buildEnvironment],
+    ["提交哈希", info.commitHash],
+    ["Fork 维护者", info.forkMaintainer],
+    ["可用更新", info.updateAvailable],
+    ["版本日期", info.versionDate],
   ];
 
   return fields.map(
     ([label, value]) =>
-      html`<p><strong>${label}:</strong> ${value ?? "Unknown"}</p>`
+      html`<p><strong>${label}:</strong> ${value ?? "未知"}</p>`
   );
 }
 
@@ -67,7 +67,7 @@ function renderDiskUsageSection({ diskError, diskUsage }) {
 export function Home() {
   const state = reactive({
     data: null,
-    unit: "miles",
+    unit: "英里",
     isLoading: true,
     error: null,
   });
@@ -87,7 +87,7 @@ export function Home() {
       const isMetric = isMetricText === "1";
 
       state.data = statsJson;
-      state.unit = isMetric ? "kilometers" : "miles";
+      state.unit = isMetric ? "公里" : "英里";
       localStorage.setItem("isMetric", isMetricText);
     } catch (err) {
       console.error("Failed to initialize component:", err);
@@ -103,45 +103,45 @@ export function Home() {
     <div>
       ${() => {
         if (state.isLoading) {
-          return html`<p>Loading...</p>`;
+          return html`<p>加载中...</p>`;
         }
 
         if (state.error) {
-          return html`<p class="error">Failed to load data: ${state.error}</p>`;
+          return html`<p class="error">数据加载失败：${state.error}</p>`;
         }
 
         if (state.data) {
           const { driveStats, firehoseStats, softwareInfo } = state.data;
           return html`
-            <h1>The Pond</h1>
+            <h1>The Pond 控制台</h1>
 
             <div class="drivingStats">
-              ${DriveStat("All Time", driveStats?.all, state.unit)}
-              ${DriveStat("Past Week", driveStats?.week, state.unit)}
+              ${DriveStat("总计", driveStats?.all, state.unit)}
+              ${DriveStat("最近一周", driveStats?.week, state.unit)}
               ${DriveStat("FrogPilot", driveStats?.frogpilot, state.unit)}
             </div>
 
-            <h2>Disk Usage</h2>
+            <h2>磁盘使用情况</h2>
             <div class="diskUsage">
               ${renderDiskUsageSection(state.data)}
             </div>
 
-            <h2>Firehose Segments</h2>
+            <h2>Firehose 片段</h2>
             <div class="firehoseStats">
               <p>
                 <strong>${(firehoseStats?.segments ?? 0).toLocaleString("en-US")}</strong>
-                segments in training data.
+                个训练数据片段
               </p>
             </div>
 
-            <h2>Software Info</h2>
+            <h2>软件信息</h2>
             <div class="softwareInfo">
               <div class="softwareGrid">${renderSoftwareInfo(softwareInfo)}</div>
             </div>
           `;
         }
 
-        return html`<p>No data available.</p>`;
+        return html`<p>暂无可用数据。</p>`;
       }}
     </div>
   `;

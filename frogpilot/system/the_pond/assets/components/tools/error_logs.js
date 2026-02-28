@@ -36,14 +36,14 @@ async function deleteAllLogs() {
   try {
     const res = await fetch('/api/error_logs/delete_all', { method: 'DELETE' });
     if (res.ok) {
-      showSnackbar("All error logs deleted!");
+      showSnackbar("已删除全部错误日志！");
       state.files = [];
       state.selectedLog = undefined;
     } else {
-      showSnackbar("Delete all failed...", "error");
+      showSnackbar("删除全部失败...", "error");
     }
   } catch (err) {
-    showSnackbar("An error occurred while deleting error logs...", "error");
+    showSnackbar("删除错误日志时发生错误...", "error");
   }
 }
 
@@ -54,9 +54,9 @@ export function ErrorLogs() {
       <div id="fileList">
         ${() =>
           state.loading
-            ? html`<div class="fileEntry"><p>Loading...</p></div>`
+            ? html`<div class="fileEntry"><p>加载中...</p></div>`
             : state.files.length === 0
-              ? html`<div class="fileEntry"><p>No error logs!</p></div>`
+              ? html`<div class="fileEntry"><p>暂无错误日志！</p></div>`
               : state.files.map(file => html`
                 <div class="fileEntry"
                   @click="${() => {
@@ -64,7 +64,7 @@ export function ErrorLogs() {
                   }}">
                   <p>${file.date}</p>
                   <p class="time-since">
-                    ${file.timeSince < 60 ? "just now" : `${formatSecondsToHuman(file.timeSince, "minutes")} ago`}
+                    ${file.timeSince < 60 ? "刚刚" : `${formatSecondsToHuman(file.timeSince, "minutes")}前`}
                   </p>
                 </div>
               `)
@@ -77,7 +77,7 @@ export function ErrorLogs() {
                   class="delete-all-button"
                   @click="${() => (state.showDeleteAllModal = true)}"
                 >
-                  Delete All Error Logs
+                  删除全部错误日志
                 </button>
               </div>
             `
@@ -90,8 +90,8 @@ export function ErrorLogs() {
     </div>
   </div>
   ${() => state.confirmDelete.visible ? Modal({
-    title: "Confirm Delete",
-    message: html`Are you sure you want to delete <strong>${state.confirmDelete.filename}</strong>?`,
+    title: "确认删除",
+    message: html`确定要删除 <strong>${state.confirmDelete.filename}</strong> 吗？`,
     onConfirm: async () => {
       const filename = state.confirmDelete.filename;
       if (!filename) return;
@@ -111,11 +111,11 @@ export function ErrorLogs() {
     }
   }) : ""}
   ${() => state.showDeleteAllModal ? Modal({
-    title: "Confirm Delete All",
-    message: "Are you sure you want to delete all error logs? This action cannot be undone...",
+    title: "确认全部删除",
+    message: "确定要删除全部错误日志吗？此操作无法撤销...",
     onConfirm: deleteAllLogs,
     onCancel: () => { state.showDeleteAllModal = false; },
-    confirmText: "Delete All"
+    confirmText: "全部删除"
   }) : ""}
 `;
 }
@@ -162,7 +162,7 @@ function Logviewer(filename, closeFn) {
       }
       document.body.removeChild(textArea);
     }
-    showSnackbar("Copied to clipboard!");
+    showSnackbar("已复制到剪贴板！");
   };
 
   return html`
@@ -184,7 +184,7 @@ function Logviewer(filename, closeFn) {
         </button>
       </a>
     </div>
-    <pre>${() => (logState.loading ? "Loading..." : logState.content)}</pre>
+    <pre>${() => (logState.loading ? "加载中..." : logState.content)}</pre>
   </div>
 `;
 }

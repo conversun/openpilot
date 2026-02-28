@@ -67,20 +67,20 @@ async function setSpecial(favorite, type, state, loadFavoritesAlphabetically) {
     if (type === "home") {
       if (isCurrentlyHome) {
         newIsHome = false;
-        message = "Home location removed!";
+        message = "已取消家庭地址！";
       } else {
         newIsHome = true;
         if (isCurrentlyWork) newIsWork = false;
-        message = "Home location set!";
+        message = "已设置家庭地址！";
       }
     } else if (type === "work") {
       if (isCurrentlyWork) {
         newIsWork = false;
-        message = "Work location removed!";
+        message = "已取消工作地址！";
       } else {
         newIsWork = true;
         if (isCurrentlyHome) newIsHome = false;
-        message = "Work location set!";
+        message = "已设置工作地址！";
       }
     }
     const body = { routeId: favorite.routeId, id: favorite.id };
@@ -97,7 +97,7 @@ async function setSpecial(favorite, type, state, loadFavoritesAlphabetically) {
     await new Promise(resolve => setTimeout(resolve, 0));
     state.suggestions = JSON.stringify(sorted);
   } catch {
-    showSnackbar(`Failed to update ${type} location...`);
+    showSnackbar(`更新${type === "home" ? "家庭" : "工作"}地址失败...`);
   }
 }
 
@@ -267,7 +267,7 @@ export function NavDestination() {
       state.suggestions = "[]";
     } catch (err) {
       console.error("Failed to calculate route:", err);
-      showSnackbar("Failed to calculate route…");
+      showSnackbar("路线计算失败...");
     } finally {
       state.loadingRoute = false;
     }
@@ -372,11 +372,11 @@ export function NavDestination() {
       if (fav.is_home) {
         icon = "🏠";
         el.className += " home-marker";
-        popupText = `Home: ${fav.name}`;
+        popupText = `家庭：${fav.name}`;
       } else if (fav.is_work) {
         icon = "💼";
         el.className += " work-marker";
-        popupText = `Work: ${fav.name}`;
+        popupText = `工作：${fav.name}`;
       }
       el.innerHTML = icon;
       const marker = new mapboxgl.Marker(el)
@@ -408,7 +408,7 @@ export function NavDestination() {
       }
       return sorted;
     } catch {
-      showSnackbar("Failed to load favorites...");
+      showSnackbar("收藏夹加载失败...");
       return [];
     }
   }
@@ -423,9 +423,9 @@ export function NavDestination() {
         body: JSON.stringify({ id, name, latitude, longitude, routeId })
       });
       await loadFavoritesAlphabetically();
-      showSnackbar("Favorite removed!");
+      showSnackbar("已取消收藏！");
     } catch {
-      showSnackbar("Failed to remove favorite...");
+      showSnackbar("取消收藏失败...");
     } finally {
       state.showRemoveFavoriteModal = false;
       state.favoriteToRemove = null;
@@ -464,9 +464,9 @@ export function NavDestination() {
 
       handleFavoritesClick();
 
-      showSnackbar(`"${fav.name}" renamed to "${newName}"!`, "success");
+      showSnackbar(`已将“${fav.name}”重命名为“${newName}”！`, "success");
     } catch {
-      showSnackbar("Failed to edit favorite name…");
+      showSnackbar("修改收藏名称失败...");
     } finally {
       state.showRenameFavoriteModal = false;
     }
@@ -513,7 +513,7 @@ export function NavDestination() {
   }
 
   async function selectSuggestion(sugg) {
-    const label = sugg.full_address || sugg.name || sugg.address || "Unnamed Location";
+    const label = sugg.full_address || sugg.name || sugg.address || "未命名地点";
     let coords;
     if (sugg.routeId) {
       initiateNavigation({
@@ -550,11 +550,11 @@ export function NavDestination() {
           routeId: null
         });
       } else {
-        throw new Error("Could not determine location.");
+        throw new Error("无法确定地点。");
       }
     } catch (err) {
       console.error(err);
-      showSnackbar("Error: Could not determine location.", "error");
+      showSnackbar("错误：无法确定地点。", "error");
       state.loadingRoute = false;
     }
   }
@@ -625,9 +625,9 @@ export function NavDestination() {
           ? html`
               <section class="keys-required-wrapper">
                 <div class="keys-required-widget">
-                  <div class="keys-required-title">Mapbox Keys Required</div>
-                  <p class="keys-required-text">You must set both your public and secret Mapbox keys before using navigation features.</p>
-                  <a href="/navigation_keys" class="keys-required-button">Go to "Manage Keys"</a>
+                  <div class="keys-required-title">需要导航密钥</div>
+                  <p class="keys-required-text">使用导航功能前，必须同时设置 Mapbox 公钥和私钥，或设置高德 API Key 和安全密钥。</p>
+                  <a href="/navigation_keys" class="keys-required-button">前往“密钥管理”</a>
                 </div>
               </section>
             `
@@ -635,8 +635,8 @@ export function NavDestination() {
               <div class="map-wrapper">
                 <div class="search-wrapper">
                   <div class="search-controls">
-                    <input autocomplete="off" id="search-field" placeholder="Search here" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" />
-                    ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}">❤️ Favorites</button>` : "")}
+                    <input autocomplete="off" id="search-field" placeholder="在此搜索" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" />
+                    ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}">❤️ 收藏</button>` : "")}
                     ${() => (state.canToggleProvider ? html`
                       <div class="search-provider-toggle">
                         <button class="${() => (state.searchProvider === "amap" ? "active" : "")}" @click="${() => { state.searchProvider = "amap"; state.suggestions = "[]"; }}">AMap</button>
@@ -647,7 +647,7 @@ export function NavDestination() {
                   <div id="infobox">
                     ${() => {
                       if (state.loadingRoute) {
-                        return html`<div class="navigation-summary-widget loading-status"><span class="spinner"></span> Calculating route...</div>`;
+                        return html`<div class="navigation-summary-widget loading-status"><span class="spinner"></span> 正在计算路线...</div>`;
                       } else if (state.selectedRoute) {
                         return NavigationDestination({
                           ...state.selectedRoute,
@@ -689,17 +689,17 @@ export function NavDestination() {
       }}
     </div>
     ${() => (state.showRemoveFavoriteModal ? Modal({
-      title: "Remove Favorite",
-      message: `Are you sure you want to remove <strong>${state.favoriteToRemove?.name}</strong> from your favorites?`,
+      title: "取消收藏",
+      message: `确定要将 <strong>${state.favoriteToRemove?.name}</strong> 从收藏中移除吗？`,
       onConfirm: removeFavorite,
       onCancel: () => { state.showRemoveFavoriteModal = false; state.favoriteToRemove = null; },
-      confirmText: "Remove"
+      confirmText: "移除"
     }) : "")}
     ${() => (state.showRenameFavoriteModal ? Modal({
-      title: "Rename Favorite",
+      title: "重命名收藏",
       message: html`
         <div>
-          <p>Rename <strong>${state.favoriteToRename.name}</strong> to:</p>
+          <p>将 <strong>${state.favoriteToRename.name}</strong> 重命名为：</p>
           <div style="margin-top: 10px;">
             <input class="modal-input" type="text" value="${state.newFavoriteName}" @click="${e => e.stopPropagation()}" @input="${e => state.newFavoriteName = e.target.value}" />
           </div>
@@ -707,7 +707,7 @@ export function NavDestination() {
       `,
       onConfirm: renameFavorite,
       onCancel: () => { state.showRenameFavoriteModal = false; },
-      confirmText: "Rename",
+      confirmText: "重命名",
       confirmClass: "btn-primary"
     }) : "")}
   `;
@@ -724,10 +724,10 @@ function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, rena
       </p>
       ${isFavorite(s) ? html`
         <div class="favorite-actions">
-          <button class="home-favorite-button ${s.is_home ? "active" : ""}" title="Set as Home" @click="${e => { e.stopPropagation(); setHome(s); }}">🏠</button>
-          <button class="work-favorite-button ${s.is_work ? "active" : ""}" title="Set as Work" @click="${e => { e.stopPropagation(); setWork(s); }}">💼</button>
-          <button class="edit-favorite-button" title="Rename Favorite" @click="${e => { e.stopPropagation(); renameFavorite(s); }}">✏️</button>
-          <button class="remove-favorite-button" title="Remove from Favorites" @click="${e => { e.stopPropagation(); removeFavorite(s); }}">🗑️</button>
+          <button class="home-favorite-button ${s.is_home ? "active" : ""}" title="设为家庭" @click="${e => { e.stopPropagation(); setHome(s); }}">🏠</button>
+          <button class="work-favorite-button ${s.is_work ? "active" : ""}" title="设为工作" @click="${e => { e.stopPropagation(); setWork(s); }}">💼</button>
+          <button class="edit-favorite-button" title="重命名收藏" @click="${e => { e.stopPropagation(); renameFavorite(s); }}">✏️</button>
+          <button class="remove-favorite-button" title="从收藏中移除" @click="${e => { e.stopPropagation(); removeFavorite(s); }}">🗑️</button>
         </div>
       ` : ""}
     </div>
@@ -756,7 +756,7 @@ function NavigationDestination({
   steps = []
 }) {
   async function cancelNavigation() {
-    showSnackbar("Navigation cancelled...");
+    showSnackbar("导航已取消...");
     removeRouteFromMap(map);
     cancelNavigationFn();
     localStorage.removeItem("activeRouteId");
@@ -765,7 +765,7 @@ function NavigationDestination({
   }
   async function confirmDestination() {
     onConfirm?.();
-    showSnackbar("Navigation set!");
+    showSnackbar("导航已设置！");
     localStorage.setItem("activeRouteId", routeId);
     await fetch("/api/navigation", {
       method: "POST",
@@ -803,10 +803,10 @@ function NavigationDestination({
         })
       });
       const { message } = await res.json();
-      showSnackbar(message || "Added to favorites!");
+      showSnackbar(message || "已加入收藏！");
       await loadFavorites();
     } catch {
-      showSnackbar("Failed to add to favorites…");
+      showSnackbar("添加收藏失败...");
     }
   }
   async function toggleFavorite() {
@@ -817,7 +817,7 @@ function NavigationDestination({
       if (fav) {
         removeFavorite(fav);
       } else {
-        showSnackbar("Couldn't find favorite entry…");
+        showSnackbar("未找到对应收藏项...");
       }
     } else {
       await favoriteDestination();
@@ -835,25 +835,25 @@ function NavigationDestination({
       <div class="navigation-summary-title">${name}</div>
       <div class="summary-row">
         <span class="emoji">🛣️</span>
-        <span class="label">Distance:</span>
+        <span class="label">距离：</span>
         <span class="value">${formatMetersToHuman(distance, isMetric)}</span>
       </div>
       <div class="summary-row">
         <span class="emoji">⌛</span>
-        <span class="label">Duration:</span>
+        <span class="label">时长：</span>
         <span class="value">${formatSecondsToHuman(duration)}</span>
       </div>
       <div class="summary-row">
         <span class="emoji">🕗</span>
-        <span class="label">ETA:</span>
+        <span class="label">预计到达：</span>
         <span class="value">${etaString}</span>
       </div>
       <div class="buttonCluster">
         ${() =>
           isConfirmed()
-            ? html`<button class="cancel" @click="${cancelNavigation}"><i class="bi bi-x-lg"></i> Cancel Navigation</button>`
-            : html`<button class="directions" @click="${confirmDestination}"><i class="bi bi-sign-turn-right"></i> Start Navigation</button>`}
-        <button class="favorite" @click="${toggleFavorite}">${isFavorited ? "💔 Unfavorite" : "❤️ Favorite"}</button>
+            ? html`<button class="cancel" @click="${cancelNavigation}"><i class="bi bi-x-lg"></i> 取消导航</button>`
+            : html`<button class="directions" @click="${confirmDestination}"><i class="bi bi-sign-turn-right"></i> 开始导航</button>`}
+        <button class="favorite" @click="${toggleFavorite}">${isFavorited ? "💔 取消收藏" : "❤️ 收藏"}</button>
       </div>
     </div>
   `;

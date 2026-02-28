@@ -97,7 +97,7 @@ const api = {
     if (ok) {
       state.keys = data
     } else {
-      showMessage("error", "Failed to load keys...")
+      showMessage("error", "密钥加载失败...")
     }
   },
 
@@ -106,7 +106,7 @@ const api = {
     const value = state.keyValue.trim()
 
     if (!canSave()) {
-      showMessage("error", "Invalid input or duplicate name.")
+      showMessage("error", "输入无效或名称重复。")
       return
     }
 
@@ -120,13 +120,13 @@ const api = {
     })
 
     if (!ok) {
-      showMessage("error", data.error || "Save failed...")
+      showMessage("error", data.error || "保存失败...")
       return
     }
 
     state.keys = data
     selectKey(name)
-    showMessage("message", "Saved key!")
+    showMessage("message", "密钥已保存！")
   },
 
   delete: async (name) => {
@@ -136,7 +136,7 @@ const api = {
     state.confirmDelete.visible = false;
 
     if (!ok) {
-      showMessage("error", "Delete failed...")
+      showMessage("error", "删除失败...")
       return
     }
 
@@ -144,7 +144,7 @@ const api = {
     state.keyName = ""
     state.keyValue = ""
     state.selectedKeyName = ""
-    showMessage("message", "Deleted key!")
+    showMessage("message", "密钥已删除！")
   },
 
   applyKey: async (name, value) => {
@@ -157,11 +157,11 @@ const api = {
     })
 
     if (!ok) {
-      showMessage("error", "Apply failed...")
+      showMessage("error", "应用失败...")
       return
     }
 
-    showMessage("message", "Key applied!")
+    showMessage("message", "密钥已应用！")
   }
 }
 
@@ -175,28 +175,28 @@ export function TSKManager() {
   return html`
     <div class="tskkeys-wrapper tskkeys-offset-top">
       <div class="tskkeys-container">
-        <div class="tskkeys-title">Toyota Security Key Manager</div>
+        <div class="tskkeys-title">丰田安全密钥管理</div>
 
-        <label class="tskkeys-label" for="tsk-select-key">Select Key</label>
+        <label class="tskkeys-label" for="tsk-select-key">选择密钥</label>
         <div class="tskkeys-row">
           <select
             id="tsk-select-key"
             class="tskkeys-select"
             value="${() => state.selectedKeyName}"
             @change="${(e) => selectKey(e.target.value)}">
-            <option value="">-- Select a saved key --</option>
+            <option value="">-- 选择已保存的密钥 --</option>
             ${() => (state.keys || []).map(k => html`
               <option value="${k.name}">${k.name}</option>
             `)}
           </select>
         </div>
 
-        <label class="tskkeys-label" for="tsk-key-name">Key Name</label>
+        <label class="tskkeys-label" for="tsk-key-name">密钥名称</label>
         <div class="tskkeys-row">
           <input
             id="tsk-key-name"
             class="tskkeys-input"
-            placeholder="Enter key name..."
+            placeholder="输入密钥名称..."
             autocomplete="off"
             value="${() => state.keyName}"
             @input="${(e) => {
@@ -209,16 +209,16 @@ export function TSKManager() {
 
         ${() => isDuplicateName() ? html`
           <div class="tskkeys-error" style="opacity: 1; margin-top: -10px; margin-bottom: 10px;">
-            A key with this name already exists.
+            已存在同名密钥。
           </div>
         ` : ""}
 
-        <label class="tskkeys-label" for="tsk-key-value">Key Value</label>
+        <label class="tskkeys-label" for="tsk-key-value">密钥内容</label>
         <div class="tskkeys-row">
           <input
             id="tsk-key-value"
             class="tskkeys-input"
-            placeholder="Enter key value..."
+            placeholder="输入密钥内容..."
             autocomplete="off"
             value="${() => state.keyValue}"
             @input="${(e) => {
@@ -266,21 +266,21 @@ export function TSKManager() {
               if (selected) {
                 api.applyKey(selected.name, selected.value)
               } else {
-                showMessage("error", "Select a key from the list first")
+                showMessage("error", "请先从列表中选择密钥")
               }
             }}">
-            Apply Key
+            应用密钥
           </button>
         </div>
       </div>
     </div>
 
     ${() => state.confirmDelete.visible ? Modal({
-        title: "Confirm Delete",
-        message: `Are you sure you want to delete the key <strong>${state.confirmDelete.keyName}</strong>?`,
+        title: "确认删除",
+        message: `确定要删除密钥 <strong>${state.confirmDelete.keyName}</strong> 吗？`,
         onConfirm: () => api.delete(state.confirmDelete.keyName),
         onCancel: () => { state.confirmDelete.visible = false; },
-        confirmText: "Yes, Delete"
+        confirmText: "确认删除"
     }) : ""}
   `
 }

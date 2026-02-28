@@ -69,7 +69,7 @@ async function fetchRecordings() {
       }
     }
   } catch (_) {
-    state.error = "Couldn't load recordings. Please try again later..."
+    state.error = "录像加载失败，请稍后重试..."
   } finally {
     state.loading = false
   }
@@ -99,11 +99,11 @@ async function renameFile(rec) {
   const base = rec.filename.replace(/\.mp4$/i, "")
   const dlg = openDialog(`
     <div class="dialog-box">
-      <p>Rename “${rec.filename}”</p>
+      <p>重命名 “${rec.filename}”</p>
       <input class="rn-input" value="${base}" />
       <div class="dialog-buttons">
-        <button class="btn-cancel">Cancel</button>
-        <button class="btn-save">Save</button>
+        <button class="btn-cancel">取消</button>
+        <button class="btn-save">保存</button>
       </div>
     </div>`)
   dlg.querySelector(".btn-cancel").onclick = () => closeDialog(dlg)
@@ -134,9 +134,9 @@ async function renameFile(rec) {
       if (overlayTitleSpan) {
         overlayTitleSpan.textContent = val.replace(/_/g, " ");
       }
-      showSnackbar("Recording renamed!")
+      showSnackbar("录像已重命名！")
     } else {
-      showSnackbar("Rename failed...", "error")
+      showSnackbar("重命名失败...", "error")
     }
   }
 }
@@ -154,9 +154,9 @@ async function deleteFile() {
   if (res.ok) {
       closeOverlay();
       refresh();
-      showSnackbar("Recording deleted!");
+      showSnackbar("录像已删除！");
   } else {
-      showSnackbar("Delete failed...", "error");
+      showSnackbar("删除失败...", "error");
   }
 
   state.showDeleteModal = false;
@@ -178,9 +178,9 @@ function openOverlay(rec) {
         <source src="/api/screen_recordings/download/${rec.filename}" type="video/mp4">
       </video>
       <div class="button-row">
-        <button class="close-button action-close">Close</button>
-        <button class="close-button action-download">Download</button>
-        <button class="close-button action-delete">Delete</button>
+        <button class="close-button action-close">关闭</button>
+        <button class="close-button action-download">下载</button>
+        <button class="close-button action-delete">删除</button>
       </div>
     </div>`
   overlay.addEventListener("click", e => { if (e.target === overlay) closeOverlay() })
@@ -212,9 +212,9 @@ async function deleteAllRecordings() {
     const res = await fetch("/api/screen_recordings/delete_all", { method: "DELETE" })
     if (!res.ok) throw new Error()
     await refresh()
-    showSnackbar("All screen recordings deleted!")
+    showSnackbar("已删除全部屏幕录制！")
   } catch {
-    showSnackbar("An error occurred while deleting all screen recordings...", "error")
+    showSnackbar("删除全部屏幕录制时发生错误...", "error")
   } finally {
     state.isDeletingAll = false
   }
@@ -226,16 +226,16 @@ export function ScreenRecordings() {
   return html`
     <div class="screen-recordings-wrapper">
       <div class="screen-recordings-widget">
-        <div class="screen-recordings-title">Screen Recordings</div>
+        <div class="screen-recordings-title">屏幕录制</div>
 
         ${() => {
-          if (state.loading && state.recordings.length === 0) return html`<p class="screen-recordings-message">Loading...</p>`
+          if (state.loading && state.recordings.length === 0) return html`<p class="screen-recordings-message">加载中...</p>`
           if (state.error) return html`<p class="screen-recordings-message">${state.error}</p>`
           if (state.progress > 0 && state.progress < state.total) {
-            return html`<p class="screen-recordings-message">Processing Recordings: ${state.progress} of ${state.total}</p>`
+            return html`<p class="screen-recordings-message">正在处理录像：${state.progress} / ${state.total}</p>`
           }
           if (state.recordings.length === 0 && !state.loading) {
-            return html`<p class="screen-recordings-message">No screen recordings found...</p>`
+            return html`<p class="screen-recordings-message">暂无屏幕录制...</p>`
           }
           return ""
         }}
@@ -304,7 +304,7 @@ export function ScreenRecordings() {
                 class="delete-all-button"
                 @click="${() => (state.showDeleteAllModal = true)}"
               >
-                Delete All Recordings
+                删除全部录像
               </button>
             `
           }
@@ -312,18 +312,18 @@ export function ScreenRecordings() {
         }}
       </div>
       ${() => state.showDeleteModal ? Modal({
-          title: "Confirm Delete",
-          message: `Are you sure you want to delete <strong>${state.recordingToDelete.filename}</strong>?`,
+          title: "确认删除",
+          message: `确定要删除 <strong>${state.recordingToDelete.filename}</strong> 吗？`,
           onConfirm: deleteFile,
           onCancel: () => { state.showDeleteModal = false; state.recordingToDelete = null; },
-          confirmText: "Delete"
+          confirmText: "删除"
       }) : ""}
       ${() => state.showDeleteAllModal ? Modal({
-        title: "Confirm Delete All",
-        message: "Are you sure you want to delete all screen recordings? This action cannot be undone...",
+        title: "确认全部删除",
+        message: "确定要删除全部屏幕录制吗？此操作无法撤销...",
         onConfirm: deleteAllRecordings,
         onCancel: () => { state.showDeleteAllModal = false; },
-        confirmText: "Delete All"
+        confirmText: "全部删除"
       }) : ""}
     </div>
   `
