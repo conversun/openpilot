@@ -71,7 +71,7 @@ async function fetchRoutes() {
       }
     }
   } catch (_) {
-    state.error = "Couldn't load routes. Please try again later..."
+    state.error = "路线加载失败，请稍后重试..."
   } finally {
     state.loading = false
   }
@@ -102,10 +102,10 @@ function closeDialog(o) {
 async function deleteRoute(route) {
   const dlg = openDialog(`
     <div class="dialog-box">
-      <p>Delete “${route.timestamp}”?</p>
+      <p>删除 “${route.timestamp}”？</p>
       <div class="dialog-buttons">
-        <button class="btn btn-cancel" ...>Cancel</button>
-        <button class="btn btn-danger btn-del" ...>Delete</button>
+        <button class="btn btn-cancel" ...>取消</button>
+        <button class="btn btn-danger btn-del" ...>删除</button>
       </div>
     </div>`)
   dlg.querySelector(".btn-cancel").onclick = () => closeDialog(dlg)
@@ -116,9 +116,9 @@ async function deleteRoute(route) {
       closeDialog(dlg)
       closeOverlay()
       refresh()
-      showSnackbar("Route deleted!")
+      showSnackbar("路线已删除！")
     } else {
-      showSnackbar("Delete failed...", "error")
+      showSnackbar("删除失败...", "error")
     }
   }
 }
@@ -141,21 +141,21 @@ async function resetRouteName(route, dlg) {
       if (overlayTitleSpan) {
         overlayTitleSpan.textContent = formatRouteDate(timestamp);
       }
-      showSnackbar("Route name reset!");
+      showSnackbar("路线名称已重置！");
     } else {
-      showSnackbar("Resetting name failed...", "error");
+      showSnackbar("重置名称失败...", "error");
     }
 }
 
 async function renameRoute(route) {
   const dlg = openDialog(`
     <div class="dialog-box">
-      <p>Rename "${route.timestamp}"</p>
+      <p>重命名 "${route.timestamp}"</p>
       <input class="rn-input" value="${route.timestamp}" />
       <div class="dialog-buttons">
-        <button class="btn-cancel">Cancel</button>
-        <button class="btn-reset">Reset</button>
-        <button class="btn-save">Save</button>
+        <button class="btn-cancel">取消</button>
+        <button class="btn-reset">重置</button>
+        <button class="btn-save">保存</button>
       </div>
     </div>`);
   dlg.querySelector(".btn-cancel").onclick = () => closeDialog(dlg);
@@ -179,9 +179,9 @@ async function renameRoute(route) {
       if (overlayTitleSpan) {
         overlayTitleSpan.textContent = newName;
       }
-      showSnackbar("Route renamed!");
+      showSnackbar("路线已重命名！");
     } else {
-      showSnackbar("Rename failed...", "error");
+      showSnackbar("重命名失败...", "error");
     }
   };
 }
@@ -201,12 +201,12 @@ async function openOverlay(route) {
         <source src="/thumbnails/${route.name}--0/preview.png" type="video/mp4">
       </video>
       <div class="button-row">
-        <button class="close-button action-close">Close</button>
-        <button class="close-button camera-button active" data-camera="forward">Forward</button>
-        <button class="close-button camera-button" data-camera="wide">Wide</button>
-        <button class="close-button camera-button" data-camera="driver">Driver</button>
-        <button class="close-button action-download">Download</button>
-        <button class="close-button action-delete">Delete</button>
+        <button class="close-button action-close">关闭</button>
+        <button class="close-button camera-button active" data-camera="forward">前视</button>
+        <button class="close-button camera-button" data-camera="wide">广角</button>
+        <button class="close-button camera-button" data-camera="driver">驾驶员</button>
+        <button class="close-button action-download">下载</button>
+        <button class="close-button action-delete">删除</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -251,7 +251,7 @@ async function openOverlay(route) {
       vid.load();
       vid.play();
     } catch (error) {
-      showSnackbar("Error: Could not load combined route video.", "error");
+      showSnackbar("错误：无法加载合并路线视频。", "error");
     }
   })();
 
@@ -294,10 +294,10 @@ async function togglePreserved(route, e) {
       route.is_preserved = newPreservedState
     } else {
       const errorData = await response.json()
-      showSnackbar(errorData.error || "Failed to update preserved state...", "error")
+      showSnackbar(errorData.error || "更新保留状态失败...", "error")
     }
   } catch (_) {
-    showSnackbar("An error occurred...", "error")
+    showSnackbar("发生错误...", "error")
   }
 }
 
@@ -308,9 +308,9 @@ async function deleteAllRoutes() {
     const res = await fetch("/api/routes/delete_all", { method: "DELETE" })
     if (!res.ok) throw new Error()
     await refresh()
-    showSnackbar("All routes deleted!")
+    showSnackbar("已删除全部路线！")
   } catch {
-    showSnackbar("An error occurred while deleting all routes...", "error")
+    showSnackbar("删除全部路线时发生错误...", "error")
   } finally {
     state.isDeletingAll = false
   }
@@ -322,13 +322,13 @@ export function RouteRecordings() {
   return html`
     <div class="screen-recordings-wrapper">
       <div class="screen-recordings-widget">
-        <div class="screen-recordings-title">Dashcam Routes</div>
+        <div class="screen-recordings-title">行车录像路线</div>
         <button
           class="show-preserved-button"
           @click="${() => (state.showPreservedOnly = !state.showPreservedOnly)}"
           ?disabled="${state.loading && state.routes.length === 0}"
         >
-          ${() => (state.showPreservedOnly ? "Show All" : "Show Only Preserved Routes")}
+          ${() => (state.showPreservedOnly ? "显示全部" : "仅显示已保留路线")}
         </button>
 
         ${() => {
@@ -336,21 +336,21 @@ export function RouteRecordings() {
 
           if (routesToShow.length === 0) {
             if (state.loading && state.total > 0) {
-              return html`<p class="screen-recordings-message">Processing Routes: ${state.progress} of ${state.total}</p>`;
+              return html`<p class="screen-recordings-message">正在处理路线：${state.progress} / ${state.total}</p>`;
             }
             if (state.loading && !state.isDeletingAll) {
-              return html`<p class="screen-recordings-message">Loading...</p>`;
+              return html`<p class="screen-recordings-message">加载中...</p>`;
             }
             if (state.isDeletingAll) {
-              return html`<p class="screen-recordings-message">Deleting routes...</p>`;
+              return html`<p class="screen-recordings-message">正在删除路线...</p>`;
             }
             if (state.showPreservedOnly) {
-              return html`<p class="screen-recordings-message">No preserved routes...</p>`;
+              return html`<p class="screen-recordings-message">暂无已保留路线...</p>`;
             }
             if (state.error) {
               return html`<p class="screen-recordings-message">${state.error}</p>`;
             }
-            return html`<p class="screen-recordings-message">No routes found...</p>`;
+            return html`<p class="screen-recordings-message">未找到路线...</p>`;
           }
 
           return html`
@@ -432,7 +432,7 @@ export function RouteRecordings() {
                 @click="${() => (state.showDeleteAllModal = true)}"
                 ?disabled="${state.isDeletingAll}"
               >
-                ${() => (state.isDeletingAll ? "Deleting..." : "Delete All Routes")}
+                ${() => (state.isDeletingAll ? "删除中..." : "删除全部路线")}
               </button>
             `;
           }
@@ -440,11 +440,11 @@ export function RouteRecordings() {
         }}
       </div>
       ${() => state.showDeleteAllModal ? Modal({
-          title: "Confirm Delete All",
-          message: "Are you sure you want to delete all routes? This action cannot be undone...",
+          title: "确认全部删除",
+          message: "确定要删除全部路线吗？此操作无法撤销...",
           onConfirm: deleteAllRoutes,
           onCancel: () => { state.showDeleteAllModal = false; },
-          confirmText: "Delete All"
+          confirmText: "全部删除"
       }) : ""}
     </div>
   `;

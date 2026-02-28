@@ -12,25 +12,25 @@ const defaultColors = {
 };
 
 const COLOR_LABELS = {
-  LaneLines: "Lane Lines",
-  LeadMarker: "Lead Marker",
-  Path: "Path",
-  PathEdge: "Path Edge",
-  Sidebar1: "Sidebar Top",
-  Sidebar2: "Sidebar Middle",
-  Sidebar3: "Sidebar Bottom",
+  LaneLines: "车道线",
+  LeadMarker: "前车标记",
+  Path: "路径",
+  PathEdge: "路径边缘",
+  Sidebar1: "侧栏上部",
+  Sidebar2: "侧栏中部",
+  Sidebar3: "侧栏下部",
 };
 
 const ICON_LABELS = {
-  homeButton: "Home Button",
-  settingsButton: "Settings Button",
+  homeButton: "主页按钮",
+  settingsButton: "设置按钮",
 };
 
 const SOUND_DEFINITIONS = [
-  { key: "disengage", label: "Disengage Sound" },
-  { key: "engage", label: "Engage Sound" },
-  { key: "prompt", label: "Prompt Sound" },
-  { key: "startup", label: "Startup Sound" },
+  { key: "disengage", label: "退出提示音" },
+  { key: "engage", label: "接管提示音" },
+  { key: "prompt", label: "提醒提示音" },
+  { key: "startup", label: "启动提示音" },
 ];
 
 const fileStore = {
@@ -383,7 +383,7 @@ const loadDefaultTheme = async () => {
     }
   } catch (error) {
     console.error("Failed to load default theme:", error);
-    showSnackbar("Failed to load default theme.", "error");
+    showSnackbar("加载默认主题失败。", "error");
   }
 };
 
@@ -454,18 +454,18 @@ export function ThemeMaker() {
 
     for (const file of files) {
       if (key === "turnSignal" && state.turnSignalType === "Sequential" && file.type === "image/gif") {
-        showSnackbar("GIFs are not supported for sequential turn signals...", "error");
+        showSnackbar("序列转向灯不支持 GIF...", "error");
         e.target.value = "";
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        showSnackbar(`File ${file.name} is too large! Please upload files under 5MB.`, "error");
+        showSnackbar(`文件 ${file.name} 过大！请上传小于 5MB 的文件。`, "error");
         e.target.value = "";
         return;
       }
 
       if (!file.type.startsWith(`${type}/`)) {
-        showSnackbar(`Invalid file type! Please upload an ${type} file.`, "error");
+        showSnackbar(`文件类型无效！请上传 ${type} 类型文件。`, "error");
         e.target.value = "";
         return;
       }
@@ -592,29 +592,29 @@ export function ThemeMaker() {
 
   const applyTheme = async () => {
     if (!Object.values(state.saveChecklist).some(v => v)) {
-      return showSnackbar("Please select at least one component to apply!", "error");
+      return showSnackbar("请至少选择一个要应用的组件！", "error");
     }
     state.showApplyConfirmModal = false;
     state.isApplying = true;
     await performApiAction(
       "/api/themes/apply",
       { method: "POST", body: getFormData() },
-      "Theme applied successfully!",
-      "Failed to apply theme."
+      "主题应用成功！",
+      "主题应用失败。"
     );
     state.isApplying = false;
   };
 
   const saveTheme = async () => {
     if (!state.themeName.trim()) {
-      return showSnackbar("Please enter a theme name!", "error");
+      return showSnackbar("请输入主题名称！", "error");
     }
     if (!Object.values(state.saveChecklist).some(v => v)) {
-      return showSnackbar("Please select at least one component to save!", "error");
+      return showSnackbar("请至少选择一个要保存的组件！", "error");
     }
     state.showSaveConfirmModal = false;
     state.isSaving = true;
-    const { ok } = await performApiAction("/api/themes", { method: "POST", body: getFormData() }, "Theme saved successfully!", "Failed to save theme.");
+    const { ok } = await performApiAction("/api/themes", { method: "POST", body: getFormData() }, "主题保存成功！", "主题保存失败。");
     if (ok) {
       state.themeName = "";
     }
@@ -623,19 +623,19 @@ export function ThemeMaker() {
 
   const submitTheme = async () => {
     if (!state.discordUsername.trim()) {
-      return showSnackbar("Discord username is required for submission...", "error");
+      return showSnackbar("提交时必须填写 Discord 用户名...", "error");
     }
     if (!state.themeName.trim()) {
-      return showSnackbar("Please enter a theme name...", "error");
+      return showSnackbar("请输入主题名称...", "error");
     }
     if (!Object.values(state.saveChecklist).some(v => v)) {
-      return showSnackbar("Please select at least one component to submit!", "error");
+      return showSnackbar("请至少选择一个要提交的组件！", "error");
     }
 
     state.isSubmitting = true;
     state.showSubmitConfirmation = false;
 
-    const { ok } = await performApiAction("/api/themes/submit", { method: "POST", body: getFormData() }, "Theme submitted successfully!", "Failed to submit theme.");
+    const { ok } = await performApiAction("/api/themes/submit", { method: "POST", body: getFormData() }, "主题提交成功！", "主题提交失败。");
     if (ok) {
       state.themeSubmitted = true;
       state.themeName = "";
@@ -669,10 +669,10 @@ export function ThemeMaker() {
 
   const confirmSubmit = () => {
     if (state.themeSubmitted) {
-      return showSnackbar("This theme has already been submitted...", "error");
+      return showSnackbar("该主题已提交过...", "error");
     }
     if (isThemeAssetEmpty()) {
-      return showSnackbar("Cannot submit an empty theme...", "error");
+      return showSnackbar("无法提交空主题...", "error");
     }
     state.saveChecklist = {
       colors: false,
@@ -799,14 +799,14 @@ export function ThemeMaker() {
         body: JSON.stringify({ component: tab, name: displayName })
       });
       if (!res.ok) {
-        showSnackbar("Unable to start download.", "error");
+        showSnackbar("无法启动下载。", "error");
         state.isLoadingAsset = false;
         return;
       }
-      showSnackbar(`Downloading ${tab.replace('_', ' ')} for the "${displayName}" theme...`);
+      showSnackbar(`正在下载主题“${displayName}”的 ${tab.replace('_', ' ')}...`);
       const result = await pollDownloadProgress();
       if (!result.ok) {
-        showSnackbar(`Download ${result.status}`, "error");
+        showSnackbar(`下载失败：${result.status}`, "error");
         state.isLoadingAsset = false;
         return;
       }
@@ -825,9 +825,9 @@ export function ThemeMaker() {
         const f = tabToLocalFlag[tab];
         if (f) theme[f] = true;
       }
-      showSnackbar(`Downloaded ${tab.replace('_', ' ')} for "${displayName}".`);
+      showSnackbar(`已下载“${displayName}”的 ${tab.replace('_', ' ')}。`);
     } catch (e) {
-      showSnackbar("Unexpected error during download.", "error");
+      showSnackbar("下载过程中发生异常。", "error");
     } finally {
       state.isLoadingAsset = false;
     }
@@ -931,10 +931,10 @@ export function ThemeMaker() {
         }
       }
 
-      showSnackbar(`Loaded ${assetType.replace("_", " ")} from "${theme.name}"!`);
+      showSnackbar(`已从“${theme.name}”加载 ${assetType.replace("_", " ")}！`);
     } catch (err) {
       console.error("Failed to load theme asset:", err);
-      showSnackbar("Failed to load theme asset.", "error");
+      showSnackbar("主题资源加载失败。", "error");
     } finally {
       state.isLoadingAsset = false;
     }
@@ -1003,10 +1003,10 @@ export function ThemeMaker() {
 
   return html`<div class="theme-maker-container">
       <div class="theme-maker-main-widget">
-        <div class="theme-maker-main-title">Theme Maker</div>
+        <div class="theme-maker-main-title">主题制作器</div>
         <div class="theme-maker-sub-widgets">
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Colors</div>
+            <div class="theme-maker-title">颜色</div>
             <div class="theme-maker-form">
               <div class="color-section">
                 ${Object.keys(COLOR_LABELS).sort().map(key => html`<label class="color-label">
@@ -1023,7 +1023,7 @@ export function ThemeMaker() {
           </section>
 
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Distance Icons</div>
+            <div class="theme-maker-title">跟车距离图标</div>
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${["traffic", "aggressive", "standard", "relaxed"].map(key => html`<div>
@@ -1032,7 +1032,7 @@ export function ThemeMaker() {
                     <div class="file-upload-label">
                       <span class="file-upload-text">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
                       <span class="file-name-display">${() => state.imageFileNames.distanceIcons[key] || ''}</span>
-                      <label for="file-upload-distance-${key}" class="file-upload-button">Choose File</label>
+                      <label for="file-upload-distance-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames.distanceIcons[key] ? html`
                         <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "distanceIcons", key)}">
                           <i class="bi bi-trash-fill"></i>
@@ -1048,7 +1048,7 @@ export function ThemeMaker() {
           </section>
 
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Icons</div>
+            <div class="theme-maker-title">图标</div>
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${Object.keys(ICON_LABELS).map(key => html`<div>
@@ -1057,7 +1057,7 @@ export function ThemeMaker() {
                     <div class="file-upload-label">
                       <span class="file-upload-text">${ICON_LABELS[key]}</span>
                       <span class="file-name-display">${() => state.imageFileNames[key] || ''}</span>
-                      <label for="file-upload-${key}" class="file-upload-button">Choose File</label>
+                      <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames[key] ? html`
                         <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", key)}">
                           <i class="bi bi-trash-fill"></i>
@@ -1074,7 +1074,7 @@ export function ThemeMaker() {
           </section>
 
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Sounds</div>
+            <div class="theme-maker-title">声音</div>
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${SOUND_DEFINITIONS.map(({ key, label }) => html`<div>
@@ -1083,7 +1083,7 @@ export function ThemeMaker() {
                     <div class="file-upload-label">
                       <span class="file-upload-text">${label}</span>
                       <span class="file-name-display">${() => state.soundFileNames[key] || ''}</span>
-                      <label for="file-upload-${key}" class="file-upload-button">Choose File</label>
+                      <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.soundFileNames[key] ? html`
                         <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "audio", key)}">
                           <i class="bi bi-trash-fill"></i>
@@ -1096,16 +1096,16 @@ export function ThemeMaker() {
           </section>
 
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Steering Wheel</div>
+            <div class="theme-maker-title">方向盘</div>
             <div class="theme-maker-form">
               <div class="upload-section">
                 <div>
                   <input type="file" class="file-upload-input" id="file-upload-steeringWheel" accept="image/*"
                     @change="${e => handleFileUpload(e, "image", "steeringWheel")}" />
                   <div class="file-upload-label">
-                    <span class="file-upload-text">Steering Wheel</span>
+                    <span class="file-upload-text">方向盘</span>
                     <span class="file-name-display">${() => state.imageFileNames.steeringWheel || ''}</span>
-                    <label for="file-upload-steeringWheel" class="file-upload-button">Choose File</label>
+                    <label for="file-upload-steeringWheel" class="file-upload-button">选择文件</label>
                     ${() => state.imageFileNames.steeringWheel ? html`
                       <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "steeringWheel")}">
                         <i class="bi bi-trash-fill"></i>
@@ -1121,12 +1121,12 @@ export function ThemeMaker() {
           </section>
 
           <section class="theme-maker-widget">
-            <div class="theme-maker-title">Turn Signals</div>
+            <div class="theme-maker-title">转向灯</div>
             <div class="theme-maker-form">
               <div class="upload-section">
                 <div class="turn-signal-length-section">
                   <label for="turnSignalLength" class="theme-name-label turn-signal-label">
-                    Turn Signal Length (25-1000ms)
+                    转向灯时长（25-1000ms）
                   </label>
                   <input type="text" pattern="\\d*" id="turnSignalLength"
                     value="${() => state.turnSignalLength}"
@@ -1135,36 +1135,36 @@ export function ThemeMaker() {
                 </div>
                 <div class="turn-signal-style-section">
                   <label class="theme-name-label turn-signal-label">
-                    Turn Signal Style
+                    转向灯样式
                     <span class="help-icon" @click="${() => state.showTurnSignalHelp = !state.showTurnSignalHelp}">?</span>
                   </label>
                   <div class="signal-type-toggle">
                     <button class="${() => `toggle-button ${state.turnSignalStyle === "Static" ? "active" : ""}`}"
-                      @click="${() => state.turnSignalStyle = "Static"}">Static</button>
+                      @click="${() => state.turnSignalStyle = "Static"}">静态</button>
                     <button class="${() => `toggle-button ${state.turnSignalStyle === "Traditional" ? "active" : ""}`}"
-                      @click="${() => state.turnSignalStyle = "Traditional"}">Traditional</button>
+                      @click="${() => state.turnSignalStyle = "Traditional"}">传统</button>
                   </div>
                   ${() => state.showTurnSignalHelp && html`<div class="turn-signal-help-text">
-                      <p><strong>Static</strong> - The turn signal animation appears next to the current speed.</p>
-                      <p><strong>Traditional</strong> - The turn signal animation moves across the bottom of the screen.</p>
+                      <p><strong>静态</strong> - 转向灯动画显示在当前车速旁边。</p>
+                      <p><strong>传统</strong> - 转向灯动画在屏幕底部移动显示。</p>
                     </div>`}
                 </div>
                 ${() => state.turnSignalStyle === "Traditional" && html`<div class="turn-signal-style-section">
-                    <label class="theme-name-label turn-signal-label">Turn Signal Type</label>
+                    <label class="theme-name-label turn-signal-label">转向灯类型</label>
                     <div class="signal-type-toggle">
                       <button class="${() => `toggle-button ${state.turnSignalType === "Sequential" ? "active" : ""}`}"
-                        @click="${() => toggleTurnSignalType("Sequential")}">Sequential</button>
+                        @click="${() => toggleTurnSignalType("Sequential")}">序列帧</button>
                       <button class="${() => `toggle-button ${state.turnSignalType === "Single Image" ? "active" : ""}`}"
-                        @click="${() => toggleTurnSignalType("Single Image")}">Single Image</button>
+                        @click="${() => toggleTurnSignalType("Single Image")}">单图</button>
                     </div>
                   </div>`}
                 <div>
                   <input type="file" class="file-upload-input" id="file-upload-turnSignalBlindspot" accept="image/*"
                     @change="${e => handleFileUpload(e, "image", "turnSignalBlindspot")}" />
                   <div class="file-upload-label">
-                    <span class="file-upload-text">Blind Spot</span>
+                    <span class="file-upload-text">盲区提示</span>
                     <span class="file-name-display">${() => state.imageFileNames.turnSignalBlindspot || ''}</span>
-                    <label for="file-upload-turnSignalBlindspot" class="file-upload-button">Choose File</label>
+                    <label for="file-upload-turnSignalBlindspot" class="file-upload-button">选择文件</label>
                     ${() => state.imageFileNames.turnSignalBlindspot ? html`
                       <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "turnSignalBlindspot")}">
                         <i class="bi bi-trash-fill"></i>
@@ -1177,7 +1177,7 @@ export function ThemeMaker() {
                     :multiple="${() => state.turnSignalType === "Sequential"}"
                     @change="${e => handleFileUpload(e, "image", "turnSignal")}" />
                   <div class="file-upload-label">
-                    <span class="file-upload-text">${() => state.turnSignalType === "Sequential" ? "Turn Signals" : "Turn Signal"}</span>
+                    <span class="file-upload-text">${() => state.turnSignalType === "Sequential" ? "转向灯序列" : "转向灯"}</span>
                     <span class="file-name-display">
                       ${() => {
                         if (state.turnSignalType === "Sequential") {
@@ -1187,7 +1187,7 @@ export function ThemeMaker() {
                         return state.imageFileNames.turnSignal || '';
                       }}
                     </span>
-                    <label for="file-upload-turnSignal" class="file-upload-button">${() => state.turnSignalType === "Sequential" ? "Choose Files" : "Choose File"}</label>
+                    <label for="file-upload-turnSignal" class="file-upload-button">${() => state.turnSignalType === "Sequential" ? "选择文件" : "选择文件"}</label>
                     ${() => (state.imageFileNames.turnSignal || state.sequentialImages.length > 0) ? html`
                       <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "turnSignal")}">
                         <i class="bi bi-trash-fill"></i>
@@ -1196,7 +1196,7 @@ export function ThemeMaker() {
                   </div>
                 </div>
                 ${() => state.turnSignalType === "Sequential" ? html`
-                <button class="sequence-order-button" @click="${() => state.showSequenceOrderModal = true}">Turn Signal Sequence Order</button>
+                <button class="sequence-order-button" @click="${() => state.showSequenceOrderModal = true}">转向灯序列顺序</button>
                 ` : ""}
               </div>
             </div>
@@ -1204,157 +1204,157 @@ export function ThemeMaker() {
         </div>
         <div class="save-button-wrapper">
           <button class="apply-button" @click="${confirmApply}" :disabled="${() => state.isApplying}">
-            ${() => state.isApplying ? "Applying..." : "Apply Theme"}
+            ${() => state.isApplying ? "应用中..." : "应用主题"}
           </button>
-          <button class="manage-themes-button" @click="${manageThemes}">Manage Themes</button>
+          <button class="manage-themes-button" @click="${manageThemes}">管理主题</button>
           <button class="save-button" @click="${confirmSave}" :disabled="${() => state.isSaving}">
-            ${() => state.isSaving ? "Saving..." : "Save Theme"}
+            ${() => state.isSaving ? "保存中..." : "保存主题"}
           </button>
           <button class="submit-button" @click="${confirmSubmit}" :disabled="${() => state.isSubmitting}">
-            ${() => state.isSubmitting ? "Submitting..." : "Submit Theme"}
+            ${() => state.isSubmitting ? "提交中..." : "提交主题"}
           </button>
         </div>
       </div>
 
       ${() => state.showApplyConfirmModal && Modal({
-        title: "Apply Theme",
+        title: "应用主题",
         message: html`
           <div class="checklist-container">
-            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">Select components to apply:</p>
+            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">选择要应用的组件：</p>
             <label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.colors}" @click="${() => state.saveChecklist.colors = !state.saveChecklist.colors}">
-              <span class="label-text">Colors</span>
+              <span class="label-text">颜色</span>
               <span class="custom-checkbox"></span>
             </label>
             ${() => hasDistanceIcons() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.distance_icons}" @click="${() => state.saveChecklist.distance_icons = !state.saveChecklist.distance_icons}">
-              <span class="label-text">Distance Icons</span>
+              <span class="label-text">跟车距离图标</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasIcons() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.icons}" @click="${() => state.saveChecklist.icons = !state.saveChecklist.icons}">
-              <span class="label-text">Icons</span>
+              <span class="label-text">图标</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSounds() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.sounds}" @click="${() => state.saveChecklist.sounds = !state.saveChecklist.sounds}">
-              <span class="label-text">Sounds</span>
+              <span class="label-text">声音</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSteeringWheel() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.steering_wheel}" @click="${() => state.saveChecklist.steering_wheel = !state.saveChecklist.steering_wheel}">
-              <span class="label-text">Steering Wheel</span>
+              <span class="label-text">方向盘</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasTurnSignals() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.turn_signals}" @click="${() => state.saveChecklist.turn_signals = !state.saveChecklist.turn_signals}">
-              <span class="label-text">Turn Signals</span>
+              <span class="label-text">转向灯</span>
               <span class="custom-checkbox"></span>
             </label>`}
           </div>
         `,
         onConfirm: applyTheme,
         onCancel: () => state.showApplyConfirmModal = false,
-        confirmText: "Apply",
+        confirmText: "应用",
         confirmClass: "btn-primary",
       })}
 
       ${() => state.showSaveConfirmModal && Modal({
-        title: "Save Theme",
+        title: "保存主题",
         message: html`
           <div class="theme-name-section">
-            <label for="themeName" class="theme-name-label">Theme Name</label>
-            <input type="text" id="themeName" placeholder="Enter theme name..." autocomplete="off"
+            <label for="themeName" class="theme-name-label">主题名称</label>
+            <input type="text" id="themeName" placeholder="输入主题名称..." autocomplete="off"
               value="${() => state.themeName}" @input="${(e) => state.themeName = e.target.value}" />
           </div>
           <div class="checklist-container">
-            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">Select components to save:</p>
+            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">选择要保存的组件：</p>
             <label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.colors}" @click="${() => state.saveChecklist.colors = !state.saveChecklist.colors}">
-              <span class="label-text">Colors</span>
+              <span class="label-text">颜色</span>
               <span class="custom-checkbox"></span>
             </label>
             ${() => hasDistanceIcons() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.distance_icons}" @click="${() => state.saveChecklist.distance_icons = !state.saveChecklist.distance_icons}">
-              <span class="label-text">Distance Icons</span>
+              <span class="label-text">跟车距离图标</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasIcons() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.icons}" @click="${() => state.saveChecklist.icons = !state.saveChecklist.icons}">
-              <span class="label-text">Icons</span>
+              <span class="label-text">图标</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSounds() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.sounds}" @click="${() => state.saveChecklist.sounds = !state.saveChecklist.sounds}">
-              <span class="label-text">Sounds</span>
+              <span class="label-text">声音</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSteeringWheel() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.steering_wheel}" @click="${() => state.saveChecklist.steering_wheel = !state.saveChecklist.steering_wheel}">
-              <span class="label-text">Steering Wheel</span>
+              <span class="label-text">方向盘</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasTurnSignals() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.turn_signals}" @click="${() => state.saveChecklist.turn_signals = !state.saveChecklist.turn_signals}">
-              <span class="label-text">Turn Signals</span>
+              <span class="label-text">转向灯</span>
               <span class="custom-checkbox"></span>
             </label>`}
           </div>
         `,
         onConfirm: saveTheme,
         onCancel: () => state.showSaveConfirmModal = false,
-        confirmText: "Save",
+        confirmText: "保存",
         confirmClass: "btn-primary",
       })}
 
       ${() => state.showSubmitConfirmation && Modal({
-        title: "Submit Theme for Community Use",
+        title: "提交主题到社区",
         message: html`
-          <p>Submit your theme for everyone to use!</p>
+          <p>提交你的主题，供所有人使用！</p>
           <div class="theme-name-section">
-            <label for="submitThemeName" class="theme-name-label">Theme Name</label>
-            <input type="text" id="submitThemeName" placeholder="Enter theme name..." autocomplete="off"
+            <label for="submitThemeName" class="theme-name-label">主题名称</label>
+            <input type="text" id="submitThemeName" placeholder="输入主题名称..." autocomplete="off"
               value="${() => state.themeName}" @input="${e => state.themeName = e.target.value}" />
           </div>
-          <p>Please enter your Discord username below so we can contact you if needed.</p>
-          <input type="text" placeholder="Discord Username" class="discord-username-input" value="${() => state.discordUsername}" @input="${e => state.discordUsername = e.target.value}" />
+          <p>请填写你的 Discord 用户名，便于我们在需要时联系你。</p>
+          <input type="text" placeholder="Discord 用户名" class="discord-username-input" value="${() => state.discordUsername}" @input="${e => state.discordUsername = e.target.value}" />
           <div class="checklist-container">
-            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">Select components to submit:</p>
+            <p style="margin-bottom: 10px; text-align: left; font-weight: bold;">选择要提交的组件：</p>
             <label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.colors}" @click="${() => state.saveChecklist.colors = !state.saveChecklist.colors}">
-              <span class="label-text">Colors</span>
+              <span class="label-text">颜色</span>
               <span class="custom-checkbox"></span>
             </label>
             ${() => hasDistanceIcons() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.distance_icons}" @click="${() => state.saveChecklist.distance_icons = !state.saveChecklist.distance_icons}">
-              <span class="label-text">Distance Icons</span>
+              <span class="label-text">跟车距离图标</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSounds() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.sounds}" @click="${() => state.saveChecklist.sounds = !state.saveChecklist.sounds}">
-              <span class="label-text">Sounds</span>
+              <span class="label-text">声音</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasSteeringWheel() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.steering_wheel}" @click="${() => state.saveChecklist.steering_wheel = !state.saveChecklist.steering_wheel}">
-              <span class="label-text">Steering Wheel</span>
+              <span class="label-text">方向盘</span>
               <span class="custom-checkbox"></span>
             </label>`}
             ${() => hasTurnSignals() && html`<label class="checklist-item">
               <input type="checkbox" :checked="${() => state.saveChecklist.turn_signals}" @click="${() => state.saveChecklist.turn_signals = !state.saveChecklist.turn_signals}">
-              <span class="label-text">Turn Signals</span>
+              <span class="label-text">转向灯</span>
               <span class="custom-checkbox"></span>
             </label>`}
           </div>
         `,
         onConfirm: submitTheme,
         onCancel: () => state.showSubmitConfirmation = false,
-        confirmText: "Submit",
+        confirmText: "提交",
         confirmClass: "btn-primary",
       })}
 
       ${() => state.showManageThemesModal && Modal({
-        title: "Manage Themes",
+        title: "管理主题",
         message: html`
           <div class="manage-themes-tabs">
             ${["colors", "distance_icons", "icons", "sounds", "steering_wheel", "turn_signals"].map(tab => html`
@@ -1403,24 +1403,24 @@ export function ThemeMaker() {
           </div>
         `,
         onCancel: () => state.showManageThemesModal = false,
-        cancelText: "Close",
+        cancelText: "关闭",
         customClass: "manage-themes-modal"
       })}
 
       ${() => state.showDeleteConfirmModal && Modal({
-        title: "Confirm Delete",
-        message: `Are you sure you want to delete the theme "${state.themeToDelete.name}"?`,
+        title: "确认删除",
+        message: `确定要删除主题“${state.themeToDelete.name}”吗？`,
         onConfirm: deleteTheme,
         onCancel: () => {
           state.showDeleteConfirmModal = false;
           state.themeToDelete = null;
         },
-        confirmText: "Delete",
+        confirmText: "删除",
         confirmClass: "btn-danger",
       })}
 
     ${() => state.showSequenceOrderModal && Modal({
-      title: "Turn Signal Sequence Order",
+      title: "转向灯序列顺序",
       message: html`
       <div
         class="draggable-list"
@@ -1448,7 +1448,7 @@ export function ThemeMaker() {
       </div>
       `,
       onCancel: () => state.showSequenceOrderModal = false,
-      cancelText: "Close"
+      cancelText: "关闭"
     })}
     </div>`;
 }

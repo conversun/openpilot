@@ -30,7 +30,7 @@ async function loadTmuxLogs() {
       };
     });
   } catch (err) {
-    showSnackbar(`Failed to fetch logs: ${err.message}`, "error");
+    showSnackbar(`获取日志失败：${err.message}`, "error");
     logSelectorState.files = [];
   } finally {
     logSelectorState.loading = false;
@@ -69,13 +69,13 @@ function TmuxLogSelector({ action, closeFn }) {
       });
       if (!res.ok) throw new Error(await res.text());
 
-      showSnackbar(`${file.filename} deleted successfully!`, "success");
+      showSnackbar(`${file.filename} 删除成功！`, "success");
       logSelectorState.files = logSelectorState.files.filter(f => f.filename !== file.filename);
       if (logSelectorState.files.length === 0) {
         logSelectorState.logsLoadedOnce = false;
       }
     } catch (err) {
-      showSnackbar(`Delete failed: ${err.message}`, "error");
+      showSnackbar(`删除失败：${err.message}`, "error");
     } finally {
       logSelectorState.logToDelete = null;
     }
@@ -100,12 +100,12 @@ function TmuxLogSelector({ action, closeFn }) {
       });
       if (!res.ok) throw new Error(await res.text());
 
-      showSnackbar(`${file.filename} renamed to ${newName}!`, "success");
+      showSnackbar(`${file.filename} 已重命名为 ${newName}！`, "success");
       logSelectorState.files = logSelectorState.files.map(f =>
         f.filename === file.filename ? { ...f, filename: newName } : f
       );
     } catch (err) {
-      showSnackbar(`Rename failed: ${err.message}`, "error");
+      showSnackbar(`重命名失败：${err.message}`, "error");
     } finally {
       logSelectorState.logToRename = null;
       logSelectorState.newName = "";
@@ -116,42 +116,42 @@ function TmuxLogSelector({ action, closeFn }) {
     <div class="tmux-log-selector-wrapper" @click="${(e) => e.target === e.currentTarget && closeFn()}">
       <div id="fileList">
         <div class="fileEntry header">
-          <p>Filename</p>
-          <p>Date</p>
-          <p>Age</p>
+          <p>文件名</p>
+          <p>日期</p>
+          <p>时间</p>
         </div>
 
         ${() => {
           if (logSelectorState.loading && !logSelectorState.logsLoadedOnce) {
-            return html`<div class="fileEntry"><p>Loading...</p></div>`;
+            return html`<div class="fileEntry"><p>加载中...</p></div>`;
           }
           if (logSelectorState.files.length === 0) {
-            return html`<div class="fileEntry"><p>No tmux logs found!</p></div>`;
+            return html`<div class="fileEntry"><p>未找到 tmux 日志！</p></div>`;
           }
           return logSelectorState.files.map(file => html`
             <div class="fileEntry" @click="${() => handleFileClick(file)}">
-              <p><span class="label">Filename:</span> <span class="value">${file.filename}</span></p>
-              <p><span class="label">Date:</span> <span class="value">${file.date}</span></p>
-              <p><span class="label">Age:</span> <span class="value">${file.timeSince < 60 ? "just now" : `${formatSecondsToHuman(file.timeSince, "minutes")} ago`}</span></p>
+              <p><span class="label">文件名：</span> <span class="value">${file.filename}</span></p>
+              <p><span class="label">日期：</span> <span class="value">${file.date}</span></p>
+              <p><span class="label">时间：</span> <span class="value">${file.timeSince < 60 ? "刚刚" : `${formatSecondsToHuman(file.timeSince, "minutes")}前`}</span></p>
             </div>
           `);
         }}
 
-        <button @click="${closeFn}" class="cancel-button">Close</button>
+        <button @click="${closeFn}" class="cancel-button">关闭</button>
 
         ${() => logSelectorState.logToDelete ? Modal({
-          title: "Confirm Delete",
-          message: `Are you sure you want to delete <strong>${logSelectorState.logToDelete.filename}</strong>?`,
+          title: "确认删除",
+          message: `确定要删除 <strong>${logSelectorState.logToDelete.filename}</strong> 吗？`,
           onConfirm: confirmDeleteFile,
           onCancel: () => { logSelectorState.logToDelete = null },
-          confirmText: "Yes, Delete"
+          confirmText: "确认删除"
         }) : ""}
 
         ${() => logSelectorState.logToRename ? Modal({
-          title: "Rename Log",
+          title: "重命名日志",
           message: html`
             <div>
-              <p>Rename <strong>${logSelectorState.logToRename.filename}</strong> to:</p>
+              <p>将 <strong>${logSelectorState.logToRename.filename}</strong> 重命名为：</p>
               <div style="margin-top: 10px;">
                 <input
                   class="modal-input"
@@ -168,7 +168,7 @@ function TmuxLogSelector({ action, closeFn }) {
             logSelectorState.logToRename = null;
             logSelectorState.newName = "";
           },
-          confirmText: "Rename",
+          confirmText: "重命名",
           confirmClass: "btn-primary"
         }) : ""}
       </div>
@@ -209,12 +209,12 @@ export function TmuxLog() {
     fetch("/api/tmux_log/capture", { method: "POST" })
       .then(res => {
         if (!res.ok) return res.text().then(msg => { throw new Error(msg); });
-        showSnackbar("Current session captured!", "success");
+        showSnackbar("当前会话已保存！", "success");
         logSelectorState.files = [];
         logSelectorState.logsLoadedOnce = false;
       })
       .catch(err => {
-        showSnackbar(`Capture failed: ${err.message}`, "error");
+        showSnackbar(`保存失败：${err.message}`, "error");
       });
   }
 
@@ -235,12 +235,12 @@ export function TmuxLog() {
     fetch("/api/tmux_log/delete_all", { method: "DELETE" })
       .then(res => {
         if (!res.ok) return res.text().then(msg => { throw new Error(msg); });
-        showSnackbar("All logs deleted successfully!", "success");
+        showSnackbar("全部日志已删除！", "success");
         logSelectorState.files = [];
         logSelectorState.logsLoadedOnce = false;
       })
       .catch(err => {
-        showSnackbar(`Delete-all failed: ${err.message}`, "error");
+        showSnackbar(`全部删除失败：${err.message}`, "error");
       });
   }
 
@@ -248,18 +248,18 @@ export function TmuxLog() {
     <div class="tmux-block">
       <div class="tmux-wrapper">
         <div class="tmuxContainer">
-          <div class="tmuxHeader">Tmux Live Log</div>
+          <div class="tmuxHeader">Tmux 实时日志</div>
           <pre class="tmuxLog">${() => state.log}</pre>
         </div>
       </div>
 
       <div class="tmux-controls">
-        <button class="tmux-control-button" @click="${captureLog}">💾 Capture Log</button>
-        <button class="tmux-control-button" @click="${deleteSession}">🗑️ Delete Log</button>
-        <button class="tmux-control-button" @click="${confirmDeleteAllSessions}">🧨 Delete All Logs</button>
-        <button class="tmux-control-button" @click="${downloadSessions}">⬇️ Download Log</button>
-        <button class="tmux-control-button" @click="${togglePause}">${() => state.paused ? "▶️ Resume Log" : "⏸️ Pause Log"}</button>
-        <button class="tmux-control-button" @click="${() => state.selectorAction = 'rename'}">✏️ Rename Log</button>
+        <button class="tmux-control-button" @click="${captureLog}">💾 保存日志</button>
+        <button class="tmux-control-button" @click="${deleteSession}">🗑️ 删除日志</button>
+        <button class="tmux-control-button" @click="${confirmDeleteAllSessions}">🧨 删除全部日志</button>
+        <button class="tmux-control-button" @click="${downloadSessions}">⬇️ 下载日志</button>
+        <button class="tmux-control-button" @click="${togglePause}">${() => state.paused ? "▶️ 恢复日志" : "⏸️ 暂停日志"}</button>
+        <button class="tmux-control-button" @click="${() => state.selectorAction = 'rename'}">✏️ 重命名日志</button>
       </div>
 
       ${() => state.selectorAction
@@ -271,11 +271,11 @@ export function TmuxLog() {
       }
 
       ${() => logSelectorState.showDeleteAllModal ? Modal({
-        title: "Delete All Logs",
-        message: "Are you sure you want to delete all of your session logs?",
+        title: "删除全部日志",
+        message: "确定要删除所有会话日志吗？",
         onConfirm: deleteAllSessions,
         onCancel: () => { logSelectorState.showDeleteAllModal = false },
-        confirmText: "Delete All"
+        confirmText: "全部删除"
       }) : ""}
     </div>
   `;

@@ -77,8 +77,8 @@ function Root() {
     <div class="content">
       ${() => {
         if (!routerState.initialized || routerState.navigation.state === "loading") {
-          return html`<div>Loading...</div>`
-        }
+    return html`<div>加载中...</div>`
+  }
 
         if (routerState.errors?.root?.status === 404) {
           return html`<h1>Not Found</h1>`

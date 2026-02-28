@@ -27,18 +27,17 @@ export function TailscaleControl() {
       return
     }
 
-    const action = state.installed ? "uninstall" : "install"
     state.status = state.installed ? "uninstalling" : "installing"
 
     state.showUninstallModal = false;
 
-    showSnackbar(`${action.charAt(0).toUpperCase() + action.slice(1)} started...`)
+    showSnackbar(`${state.installed ? "卸载" : "安装"}已开始...`)
 
     const endpoint = state.installed ? "/api/tailscale/uninstall" : "/api/tailscale/setup"
     const response = await fetch(endpoint, { method: "POST" })
     const result = await response.json()
 
-    showSnackbar(result.message || `${action.charAt(0).toUpperCase() + action.slice(1)} triggered...`)
+    showSnackbar(result.message || `${state.installed ? "卸载" : "安装"}已触发...`)
 
     if (result.auth_url) {
       window.location.href = result.auth_url;
@@ -55,10 +54,10 @@ export function TailscaleControl() {
     <div class="tailscale-wrapper">
       <section class="tailscale-widget">
         <div class="tailscale-title">
-          ${() => state.installed ? 'Uninstall Tailscale' : 'Install Tailscale'}
+          ${() => state.installed ? '卸载 Tailscale' : '安装 Tailscale'}
         </div>
         <p class="tailscale-text">
-          Tailscale creates a secure, private connection between your openpilot device and your phone or PC so you can access and control it from anywhere!
+          Tailscale 可在你的 openpilot 设备与手机/电脑之间建立安全私有连接，让你随时随地访问和控制设备。
         </p>
         <div class="tailscale-button-wrapper">
           <button
@@ -74,16 +73,16 @@ export function TailscaleControl() {
             }}
           </button>
           <a class="tailscale-link" href="https://tailscale.com/download" target="_blank">
-            Download Tailscale on your other devices
+            在其他设备上下载 Tailscale
           </a>
         </div>
       </section>
       ${() => state.showUninstallModal ? Modal({
-          title: "Confirm Uninstall",
-          message: "Are you sure you want to uninstall Tailscale?",
+          title: "确认卸载",
+          message: "确定要卸载 Tailscale 吗？",
           onConfirm: handleAction,
           onCancel: () => { state.showUninstallModal = false; },
-          confirmText: "Uninstall"
+          confirmText: "卸载"
       }) : ""}
     </div>
   `

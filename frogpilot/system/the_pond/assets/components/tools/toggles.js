@@ -39,7 +39,7 @@ export function ToggleControl () {
       })
 
       const result = await response.json()
-      showSnackbar(result.message || "Toggles restored!")
+      showSnackbar(result.message || "开关已恢复！")
 
       event.target.value = ""
     }
@@ -51,9 +51,9 @@ export function ToggleControl () {
 
   async function resetTogglesToDefault () {
     state.showResetDefaultModal = false;
-    showSnackbar("Resetting toggles to their default values...");
+    showSnackbar("正在重置为默认开关...");
     await new Promise(resolve => setTimeout(resolve, 3000));
-    showSnackbar("Rebooting...");
+    showSnackbar("正在重启...");
     await new Promise(resolve => setTimeout(resolve, 3000));
     await fetch("/api/toggles/reset_default", { method: "POST" });
   }
@@ -64,9 +64,9 @@ export function ToggleControl () {
 
   async function resetTogglesToStock () {
     state.showResetStockModal = false;
-    showSnackbar("Resetting toggles to stock openpilot values...");
+    showSnackbar("正在重置为 openpilot 原厂开关...");
     await new Promise(resolve => setTimeout(resolve, 3000));
-    showSnackbar("Rebooting...");
+    showSnackbar("正在重启...");
     await new Promise(resolve => setTimeout(resolve, 3000));
     await fetch("/api/toggles/reset_stock", { method: "POST" });
   }
@@ -78,40 +78,40 @@ export function ToggleControl () {
   return html`
     <div class="toggle-control-wrapper">
       <section class="toggle-control-widget">
-        <div class="toggle-control-title">Backup/Restore Toggles</div>
+        <div class="toggle-control-title">开关备份/恢复</div>
         <p class="toggle-control-text">
-          Use the buttons below to backup or restore your toggles.
+          使用下方按钮备份或恢复开关配置。
         </p>
-        <button class="toggle-control-button" @click="${backupToggles}">Backup Toggles</button>
-        <button class="toggle-control-button" @click="${triggerRestorePrompt}">Restore Toggles</button>
+        <button class="toggle-control-button" @click="${backupToggles}">备份开关</button>
+        <button class="toggle-control-button" @click="${triggerRestorePrompt}">恢复开关</button>
       </section>
 
       <section class="toggle-control-widget" style="margin-left: 1.5rem">
-        <div class="toggle-control-title">Reset Toggles to Default FrogPilot/Stock openpilot</div>
+        <div class="toggle-control-title">重置开关（FrogPilot 默认 / openpilot 原厂）</div>
         <p class="toggle-control-text">
-          Reset all toggles to default FrogPilot/stock openpilot settings.
+          将全部开关重置为 FrogPilot 默认或 openpilot 原厂设置。
         </p>
         <button class="toggle-control-button" @click="${confirmResetDefault}">
-          Reset Toggles to Default
+          重置为默认
         </button>
         <button class="toggle-control-button" @click="${confirmResetStock}">
-          Reset Toggles to Stock
+          重置为原厂
         </button>
       </section>
     </div>
     ${() => state.showResetDefaultModal ? Modal({
-        title: "Reset Toggles",
-        message: "Are you sure you want to reset all toggles to their default FrogPilot values?",
+        title: "重置开关",
+        message: "确定要将全部开关重置为 FrogPilot 默认值吗？",
         onConfirm: resetTogglesToDefault,
         onCancel: () => { state.showResetDefaultModal = false; },
-        confirmText: "Reset to Default"
+        confirmText: "重置为默认"
       }) : ""}
     ${() => state.showResetStockModal ? Modal({
-        title: "Reset Toggles",
-        message: "Are you sure you want to reset all toggles to stock openpilot values?",
+        title: "重置开关",
+        message: "确定要将全部开关重置为 openpilot 原厂值吗？",
         onConfirm: resetTogglesToStock,
         onCancel: () => { state.showResetStockModal = false; },
-        confirmText: "Reset to Stock"
+        confirmText: "重置为原厂"
       }) : ""}
   `
 }

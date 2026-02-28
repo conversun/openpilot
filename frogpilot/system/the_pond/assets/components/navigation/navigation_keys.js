@@ -86,10 +86,10 @@ export function NavKeys() {
 
   const getDeleteLabel = (kind) => {
     switch (kind) {
-      case "amap1": return "Amap 1"
-      case "amap2": return "Amap 2"
-      case "public": return "Public Mapbox"
-      case "secret": return "Secret Mapbox"
+      case "amap1": return "高德 Key 1"
+      case "amap2": return "高德 Key 2"
+      case "public": return "Mapbox 公钥"
+      case "secret": return "Mapbox 私钥"
       default: return kind
     }
   }
@@ -103,7 +103,7 @@ export function NavKeys() {
     load: async () => {
       const { ok, data } = await util.req(api.path.nav)
       if (!ok) {
-        return showMessage("error", "Failed to load keys...", "")
+        return showMessage("error", "密钥加载失败...", "")
       }
 
       state.amap1Key = data.amap1Key ?? ""
@@ -141,7 +141,7 @@ export function NavKeys() {
           state[keyMeta.prop] = ""
           input.focus()
         }
-        return showMessage("error", data.error || "Save failed...", group)
+        return showMessage("error", data.error || "保存失败...", group)
       }
 
       Object.assign(state, {
@@ -161,7 +161,7 @@ export function NavKeys() {
         bumpImageVersion()
       }
 
-      showMessage("message", data.message || "Saved!", group)
+      showMessage("message", data.message || "保存成功！", group)
     },
 
     confirmDelete: (kind) => {
@@ -183,7 +183,7 @@ export function NavKeys() {
       state.showDeleteModal = false;
 
       if (!ok) {
-        return showMessage("error", data.error || "Delete failed...", group)
+        return showMessage("error", data.error || "删除失败...", group)
       }
 
       Object.assign(state, {
@@ -196,14 +196,14 @@ export function NavKeys() {
         bumpImageVersion()
       }
 
-      showMessage("message", data.message || "Deleted!", group)
+      showMessage("message", data.message || "删除成功！", group)
     }
   }
 
   queueMicrotask(api.load)
 
   function renderGroup(title, kinds) {
-    const isMapbox = title === "Mapbox Keys"
+    const isMapbox = title === "Mapbox 密钥"
 
     return html`
       <div class="navkeys-group">
@@ -221,7 +221,7 @@ export function NavKeys() {
           const label = kind[0].toUpperCase() + kind.slice(1).replace(/[0-9]/, d => " " + d)
 
           return html`
-            <label class="navkeys-label" for="${kind}-key">${label} Key</label>
+            <label class="navkeys-label" for="${kind}-key">${label} 密钥</label>
             <div class="navkeys-row">
               <input
                 autocomplete="off"
@@ -254,7 +254,7 @@ export function NavKeys() {
             return html`
               <div class="navkeys-help-img">
                 <img
-                  alt="Mapbox key setup guide"
+                  alt="Mapbox 密钥设置指南"
                   src="${() => {
                     const bothKeysSet = state.savedPublic && state.savedSecret
 
@@ -296,20 +296,20 @@ export function NavKeys() {
   return html`
     <div class="navkeys-wrapper navkeys-offset-top">
       <div class="navkeys-container">
-        ${renderGroup("AMap Keys", ["amap1", "amap2"])}
+        ${renderGroup("高德密钥", ["amap1", "amap2"])}
         ${renderStatus("amap")}
       </div>
       <div class="navkeys-container">
-        ${renderGroup("Mapbox Keys", ["public", "secret"])}
+        ${renderGroup("Mapbox 密钥", ["public", "secret"])}
         ${renderStatus("mapbox")}
       </div>
     </div>
     ${() => state.showDeleteModal ? Modal({
-      title: "Confirm Delete",
-      message: `Are you sure you want to delete your <strong>${getDeleteLabel(state.keyToDelete)}</strong> key?`,
+      title: "确认删除",
+      message: `确定要删除 <strong>${getDeleteLabel(state.keyToDelete)}</strong> 吗？`,
       onConfirm: api.delete,
       onCancel: () => { state.showDeleteModal = false },
-      confirmText: "Yes, Delete"
+      confirmText: "确认删除"
     }) : ""}
   `
 }

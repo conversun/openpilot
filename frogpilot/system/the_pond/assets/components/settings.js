@@ -24,7 +24,7 @@ export function SettingsView({ params }) {
           ...setting,
           description:
             setting.description +
-            "<br><br><b>Disabling this will make settings below irrelevant</b>",
+            "<br><br><b>关闭此项后，下方设置将不再生效</b>",
           subsettings: undefined,
           expanded: true,
         },
@@ -42,7 +42,7 @@ export function SettingsView({ params }) {
 
   return html`
     <div class="settings" id="settingsWrapper">
-      <h1>${() => upperFirst(state.heading)} settings</h1>
+      <h1>${() => upperFirst(state.heading)} 设置</h1>
       ${() => {
         const settings = JSON.parse(state.settings).filter(
           (el) => el.section === state.selectedSection

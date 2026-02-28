@@ -7,20 +7,20 @@ export function SpeedLimits() {
     link.download = "speed_limits.json"
     link.click()
 
-    showSnackbar("Download started...")
+    showSnackbar("开始下载...")
   }
 
   return html`
     <div class="download-speed-limits-wrapper">
       <section class="download-speed-limits-widget">
-        <div class="download-speed-limits-title">Download Speed Limits</div>
+        <div class="download-speed-limits-title">下载限速数据</div>
         <p class="download-speed-limits-text">
-          Download speed limit data collected using "Speed Limit Filler".
+          下载由“Speed Limit Filler”收集的限速数据。
         </p>
         <div class="download-speed-limits-button-wrapper">
-          <button class="download-speed-limits-button" @click="${handleDownload}">Download</button>
+          <button class="download-speed-limits-button" @click="${handleDownload}">下载</button>
           <a class="download-speed-limits-link" href="https://SpeedLimitFiller.frogpilot.download" target="_blank">
-            Submit speed limits here
+            在这里提交限速数据
           </a>
         </div>
       </section>
