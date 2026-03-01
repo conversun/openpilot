@@ -638,6 +638,7 @@ export function NavDestination() {
       return;
     }
     state.initialized = true;
+    mapboxgl.workerUrl = "/assets/vendor/mapbox-gl-csp-worker.js";
     mapboxgl.accessToken = state.mapboxPublic;
     map = new mapboxgl.Map({
       container,
@@ -905,7 +906,7 @@ function NavigationDestination({
   const month = eta.toLocaleString([], { month: "long" });
   const day = eta.getDate();
   const year = eta.getFullYear();
-  const etaString = isLong ? `${month} ${day}${getOrdinalSuffix(day)}, ${year}, ${timeStr}` : timeStr;
+  const etaString = isLong ? `${year}年${month + 1}月${day}日 ${timeStr}` : timeStr;
   return html`
     <div class="navigation-summary-widget">
       <div class="navigation-summary-title">${name}</div>
