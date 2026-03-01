@@ -534,3 +534,31 @@
     width: calc(100% - var(--padding-xl));
   }
 }
+
+
+.search-loading {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: 0.5em;
+  padding: var(--padding-sm) var(--padding-lg);
+}
+
+.no-results-message {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--padding-lg);
+  text-align: center;
+}
+
+.suggestion-district {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-left: 0.25em;
+}
+
+#search-field.searching {
+  border-color: var(--thumb-color);
+  box-shadow: 0 0 var(--border-radius-sm) var(--thumb-color);
+}

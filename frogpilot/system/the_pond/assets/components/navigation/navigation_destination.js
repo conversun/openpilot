@@ -3,6 +3,7 @@ import {
   addRouteToMap,
   formatMetersToHuman,
   formatSecondsToHuman,
+  gcj02ToWgs84,
   getCoordinatesFromSearch,
   getRoutes,
   removeRouteFromMap,
@@ -124,7 +125,9 @@ export function NavDestination() {
     mapboxSecret: undefined,
     missingKeys: null,
     newFavoriteName: "",
+    noResults: false,
     previousDestinations: "[]",
+    searchLoading: false,
     searchProvider: "mapbox",
     selectedRoute: null,
     showRemoveFavoriteModal: false,
@@ -135,33 +138,39 @@ export function NavDestination() {
   const sessionToken = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
 
   let amapLoadPromise = null;
+  let amapAutoComplete = null;
+  let amapPlaceSearch = null;
+  let searchRequestId = 0;
+  let isComposing = false;
 
   async function ensureAMapLoaded() {
-    if (amapLoadPromise) {
-      return await amapLoadPromise;
-    }
-    
+    if (amapAutoComplete) return amapAutoComplete;
+    if (amapLoadPromise) return await amapLoadPromise;
+
     if (!state.amap1Key || !state.amap2Key) {
-      showSnackbar("AMap keys not configured", "error");
+      showSnackbar("高德地图密钥未配置", "error");
       return null;
     }
-    
-    // Set security config BEFORE loading SDK
+
     window._AMapSecurityConfig = {
       securityJsCode: state.amap2Key
     };
-    
+
     amapLoadPromise = AMapLoader.load({
       key: state.amap1Key,
       version: '2.0',
-      plugins: ['AMap.Autocomplete']
+      plugins: ['AMap.Autocomplete', 'AMap.PlaceSearch']
+    }).then(AMap => {
+      amapAutoComplete = new AMap.Autocomplete({ city: '全国', datatype: 'all' });
+      amapPlaceSearch = new AMap.PlaceSearch({ city: '全国', pageSize: 10, extensions: 'all' });
+      return amapAutoComplete;
     }).catch(e => {
       console.error("Failed to load AMap SDK:", e);
-      showSnackbar("AMap search unavailable. Check your keys and network connection.", "error");
+      showSnackbar("高德地图搜索不可用，请检查密钥和网络连接。", "error");
       amapLoadPromise = null;
       return null;
     });
-    
+
     return await amapLoadPromise;
   }
 
@@ -285,7 +294,7 @@ export function NavDestination() {
     const hasAMap = !!state.amap1Key && !!state.amap2Key;
     state.missingKeys = !hasMapbox;
     state.canToggleProvider = hasMapbox && hasAMap;
-    state.searchProvider = hasMapbox ? "mapbox" : "";
+    state.searchProvider = hasMapbox ? "mapbox" : (hasAMap ? "amap" : "");
     if (state.missingKeys) return;
     state.lastPosition = {
       latitude: parseFloat(data.lastPosition.latitude),
@@ -312,6 +321,8 @@ export function NavDestination() {
     searchFieldState.value = "";
     state.selectedRoute = null;
     state.confirmedRoute = null;
+    state.noResults = false;
+    state.searchLoading = false;
     const sorted = await loadFavoritesAlphabetically();
     state.suggestions = JSON.stringify(sorted);
     state.favoritesVisible = true;
@@ -320,36 +331,61 @@ export function NavDestination() {
   async function handleSearchKey(e) {
     if (e.key === "Enter") {
       clearTimeout(window.searchTimeout);
+      if (isComposing) return;
       const val = e.target.value.trim();
       searchFieldState.value = e.target.value;
-      if (val.length < 3) {
-        if (val.length === 0) state.suggestions = "[]";
+      const minLen = state.searchProvider === "amap" ? 1 : 3;
+      if (val.length < minLen) {
+        if (val.length === 0) { state.suggestions = "[]"; state.noResults = false; }
         return;
       }
       state.selectedRoute = null;
       state.confirmedRoute = null;
       state.suggestions = "[]";
-      if (state.searchProvider === "mapbox") {
-        const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
-        const params = new URLSearchParams({
-          proximity: prox,
-          access_token: state.mapboxPublic,
-          session_token: sessionToken,
-          q: val,
-          limit: 4
-        });
-        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
-        const data = await res.json();
-        state.suggestions = JSON.stringify(data.suggestions);
-      } else {
-        const AMap = await ensureAMapLoaded();
-        if (!AMap) return;
-        const auto = new AMap.Autocomplete({});
-        auto.search(val, (status, result) => {
-          if (status === "complete" && result.tips) {
-            state.suggestions = JSON.stringify(result.tips);
+      state.noResults = false;
+      state.searchLoading = true;
+      const currentRequestId = ++searchRequestId;
+      try {
+        if (state.searchProvider === "mapbox") {
+          const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
+          const params = new URLSearchParams({
+            proximity: prox,
+            access_token: state.mapboxPublic,
+            session_token: sessionToken,
+            q: val,
+            limit: 4
+          });
+          const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
+          const data = await res.json();
+          if (currentRequestId !== searchRequestId) return;
+          if (data.suggestions?.length > 0) {
+            state.suggestions = JSON.stringify(data.suggestions);
+          } else {
+            state.noResults = true;
           }
-        });
+        } else {
+          const auto = await ensureAMapLoaded();
+          if (!auto) { state.searchLoading = false; return; }
+          auto.search(val, (status, result) => {
+            if (currentRequestId !== searchRequestId) return;
+            if (status === "complete" && result.tips?.length > 0) {
+              state.suggestions = JSON.stringify(result.tips.filter(t => t.location));
+            } else if (status === "error") {
+              showSnackbar("搜索失败，请重试", "error");
+            } else {
+              state.noResults = true;
+            }
+            state.searchLoading = false;
+          });
+          return;
+        }
+      } catch {
+        if (currentRequestId === searchRequestId) {
+          showSnackbar("搜索失败，请重试", "error");
+          state.searchLoading = false;
+        }
+      } finally {
+        if (state.searchProvider === "mapbox" && currentRequestId === searchRequestId) state.searchLoading = false;
       }
     }
   }
@@ -476,40 +512,66 @@ export function NavDestination() {
     const newVal = e.target.value.trim();
     searchFieldState.value = e.target.value;
     clearTimeout(window.searchTimeout);
+    if (isComposing) return;
     window.searchTimeout = setTimeout(async () => {
       const val = newVal;
-      if (val.length < 3) {
+      const minLen = state.searchProvider === "amap" ? 1 : 3;
+      if (val.length < minLen) {
         if (val.length === 0) {
           state.suggestions = "[]";
+          state.noResults = false;
         }
         return;
       }
       state.selectedRoute = null;
       state.confirmedRoute = null;
       state.suggestions = "[]";
-      if (state.searchProvider === "mapbox") {
-        const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
-        const params = new URLSearchParams({
-          proximity: prox,
-          access_token: state.mapboxPublic,
-          session_token: sessionToken,
-          q: val,
-          limit: 4
-        });
-        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
-        const data = await res.json();
-        state.suggestions = JSON.stringify(data.suggestions);
-      } else {
-        const AMap = await ensureAMapLoaded();
-        if (!AMap) return;
-        const auto = new AMap.Autocomplete({});
-        auto.search(val, (status, result) => {
-          if (status === "complete" && result.tips) {
-            state.suggestions = JSON.stringify(result.tips);
+      state.noResults = false;
+      state.searchLoading = true;
+      const currentRequestId = ++searchRequestId;
+      try {
+        if (state.searchProvider === "mapbox") {
+          const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
+          const params = new URLSearchParams({
+            proximity: prox,
+            access_token: state.mapboxPublic,
+            session_token: sessionToken,
+            q: val,
+            limit: 4
+          });
+          const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
+          const data = await res.json();
+          if (currentRequestId !== searchRequestId) return;
+          if (data.suggestions?.length > 0) {
+            state.suggestions = JSON.stringify(data.suggestions);
+          } else {
+            state.noResults = true;
           }
-        });
+        } else {
+          const auto = await ensureAMapLoaded();
+          if (!auto) { state.searchLoading = false; return; }
+          auto.search(val, (status, result) => {
+            if (currentRequestId !== searchRequestId) return;
+            if (status === "complete" && result.tips?.length > 0) {
+              state.suggestions = JSON.stringify(result.tips.filter(t => t.location));
+            } else if (status === "error") {
+              showSnackbar("搜索失败，请重试", "error");
+            } else {
+              state.noResults = true;
+            }
+            state.searchLoading = false;
+          });
+          return;
+        }
+      } catch {
+        if (currentRequestId === searchRequestId) {
+          showSnackbar("搜索失败，请重试", "error");
+          state.searchLoading = false;
+        }
+      } finally {
+        if (state.searchProvider === "mapbox" && currentRequestId === searchRequestId) state.searchLoading = false;
       }
-    }, 800);
+    }, 400);
   }
 
   async function selectSuggestion(sugg) {
@@ -540,7 +602,7 @@ export function NavDestination() {
           coords = await getCoordinatesFromSearch(label, state.mapboxPublic);
         }
       } else {
-        coords = [sugg.location.lng, sugg.location.lat];
+        coords = gcj02ToWgs84(sugg.location.lng, sugg.location.lat);
       }
       if (coords) {
         initiateNavigation({
@@ -635,12 +697,12 @@ export function NavDestination() {
               <div class="map-wrapper">
                 <div class="search-wrapper">
                   <div class="search-controls">
-                    <input autocomplete="off" id="search-field" placeholder="在此搜索" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" />
+                    <input autocomplete="off" id="search-field" class="${() => state.searchLoading ? 'searching' : ''}" placeholder="在此搜索" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" @compositionstart="${() => { isComposing = true; }}" @compositionend="${(e) => { isComposing = false; searchInput(e); }}" />
                     ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}">❤️ 收藏</button>` : "")}
                     ${() => (state.canToggleProvider ? html`
                       <div class="search-provider-toggle">
-                        <button class="${() => (state.searchProvider === "amap" ? "active" : "")}" @click="${() => { state.searchProvider = "amap"; state.suggestions = "[]"; }}">AMap</button>
-                        <button class="${() => (state.searchProvider === "mapbox" ? "active" : "")}" @click="${() => { state.searchProvider = "mapbox"; state.suggestions = "[]"; }}">Mapbox</button>
+                        <button class="${() => (state.searchProvider === "amap" ? "active" : "")}" @click="${() => { state.searchProvider = "amap"; state.suggestions = "[]"; state.noResults = false; const v = document.getElementById('search-field')?.value?.trim(); if (v) { searchInput({ target: { value: v } }); } }}">AMap</button>
+                        <button class="${() => (state.searchProvider === "mapbox" ? "active" : "")}" @click="${() => { state.searchProvider = "mapbox"; state.suggestions = "[]"; state.noResults = false; const v = document.getElementById('search-field')?.value?.trim(); if (v) { searchInput({ target: { value: v } }); } }}">Mapbox</button>
                       </div>
                     ` : "")}
                   </div>
@@ -670,6 +732,10 @@ export function NavDestination() {
                           searchFieldState,
                           favoriteRoutes: state.favoriteRoutes
                         }, state.confirmedRouteRefresh);
+                      } else if (state.searchLoading) {
+                        return html`<div class="navigation-summary-widget search-loading"><span class="spinner"></span> 正在搜索...</div>`;
+                      } else if (state.noResults) {
+                        return html`<div class="navigation-summary-widget no-results-message">未找到相关地点</div>`;
                       } else if (JSON.parse(state.suggestions).length > 0) {
                         return SearchSuggestions({
                           suggestions: JSON.parse(state.suggestions),
@@ -677,7 +743,8 @@ export function NavDestination() {
                           removeFavorite: confirmRemoveFavorite,
                           renameFavorite: confirmRenameFavorite,
                           setHome: setHome,
-                          setWork: setWork
+                          setWork: setWork,
+                          searchProvider: state.searchProvider
                         });
                       }
                     }}
@@ -713,14 +780,14 @@ export function NavDestination() {
   `;
 }
 
-function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, renameFavorite, setHome, setWork }) {
+function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, renameFavorite, setHome, setWork, searchProvider }) {
   const isFavorite = s => s.name && s.latitude != null && s.longitude != null && s.routeId;
   const item = s => html`
     <div class="suggestion-item" @click="${() => selectSuggestion(s)}">
       <p>
         ${s.is_home ? "🏠 " : ""}
         ${s.is_work ? "💼 " : ""}
-        ${s.name || s.address}
+        ${s.name || s.address}${searchProvider !== "mapbox" && s.district ? html`<span class="suggestion-district">· ${s.district}</span>` : ""}
       </p>
       ${isFavorite(s) ? html`
         <div class="favorite-actions">
