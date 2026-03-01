@@ -164,9 +164,9 @@ export function NavDestination() {
     amapLoadPromise = AMapLoader.load({
       key: state.amap1Key,
       version: '2.0',
-      plugins: ['AMap.Autocomplete', 'AMap.PlaceSearch']
+      plugins: ['AMap.AutoComplete', 'AMap.PlaceSearch']
     }).then(AMap => {
-      amapAutoComplete = new AMap.Autocomplete({ city: '全国', datatype: 'all' });
+      amapAutoComplete = new AMap.AutoComplete({ city: '全国', datatype: 'all' });
       amapPlaceSearch = new AMap.PlaceSearch({ city: '全国', pageSize: 10, extensions: 'all' });
       return amapAutoComplete;
     }).catch(e => {
