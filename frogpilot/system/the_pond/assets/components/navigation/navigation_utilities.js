@@ -76,9 +76,9 @@ function handleRouteEvents(map, clickLayerId, onRouteSelect, routes, useMetric, 
     tooltip.className = 'custom-tooltip';
     tooltip.style.whiteSpace = 'nowrap';
     tooltip.innerHTML = `
-      <div class="tooltip-row"><span class="emoji">🛣️</span><span class="label">Distance:</span><span class="value">${distance}</span></div>
-      <div class="tooltip-row"><span class="emoji">⌛</span><span class="label">Duration:</span><span class="value">${duration}</span></div>
-      <div class="tooltip-row"><span class="emoji">🕗</span><span class="label">ETA:</span><span class="value">${eta}</span></div>
+      <div class="tooltip-row"><span class="emoji">🛣️</span><span class="label">距离：</span><span class="value">${distance}</span></div>
+      <div class="tooltip-row"><span class="emoji">⌛</span><span class="label">时长：</span><span class="value">${duration}</span></div>
+      <div class="tooltip-row"><span class="emoji">🕗</span><span class="label">预计到达：</span><span class="value">${eta}</span></div>
     `;
     new mapboxgl.Popup({ closeButton: false, closeOnClick: true, className: 'route-tooltip', maxWidth: 'none' })
       .setLngLat(e.lngLat)
@@ -184,18 +184,18 @@ export function removeRouteFromMap(map) {
 export function formatSecondsToHuman(s) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return h > 0 ? `${h}h ${m} min` : `${m} min`;
+  return h > 0 ? `${h}小时${m}分钟` : `${m}分钟`;
 }
 
 export function formatMetersToHuman(m, metric = true) {
-  return metric ? (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`) : (m * 3.28084 >= 5280 ? `${((m * 3.28084) / 5280).toFixed(1)} mi` : `${Math.round(m * 3.28084)} ft`);
+  return metric ? (m >= 1000 ? `${(m / 1000).toFixed(1)} 公里` : `${Math.round(m)} 米`) : (m * 3.28084 >= 5280 ? `${((m * 3.28084) / 5280).toFixed(1)} 英里` : `${Math.round(m * 3.28084)} 英尺`);
 }
 
 export function formatSecondsToAmerican(s) {
   const mins = Math.round(s / 60);
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return h > 0 ? `${h} hr ${m} min` : `${m} min`;
+  return h > 0 ? `${h}小时${m}分钟` : `${m}分钟`;
 }
 
 export function formatMetersToMiles(m) {
