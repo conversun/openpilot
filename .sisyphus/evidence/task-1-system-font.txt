@@ -1,0 +1,4 @@
+  --font-body: system-ui, -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --heading-font: var(--font-body);
+  font-family: var(--font-body);
+  font-family: var(--font-body);
