@@ -421,7 +421,7 @@
     </message>
     <message>
         <source>KM</source>
-        <translation type="gpt-5-generated">千米</translation>
+        <translation type="gpt-5-generated">公里</translation>
     </message>
     <message>
         <source>Miles</source>
