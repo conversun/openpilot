@@ -608,7 +608,10 @@ export function NavDestination() {
           coords = await getCoordinatesFromSearch(label, state.mapboxPublic);
         }
       } else {
-        coords = gcj02ToWgs84(sugg.location.lng, sugg.location.lat);
+        const loc = sugg.location;
+        const lng = Array.isArray(loc) ? loc[0] : loc.lng;
+        const lat = Array.isArray(loc) ? loc[1] : loc.lat;
+        coords = gcj02ToWgs84(lng, lat);
       }
       if (coords) {
         initiateNavigation({

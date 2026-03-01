@@ -146,7 +146,7 @@ def setup(app):
   def navigation():
     last_position = json.loads(
       params.get("LastGPSPosition", encoding="utf8") or
-      "{\"latitude\": 51.276824158421331, \"longitude\": 30.221928335547232, \"altitude\": 111.0}"
+      "{\"latitude\": 22.5431, \"longitude\": 114.0579, \"altitude\": 0.0}"
     )
 
     return {
