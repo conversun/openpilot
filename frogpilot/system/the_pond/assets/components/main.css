@@ -71,7 +71,7 @@
   --hover-scale-lg: scale(1.1);
 
   /* Fonts */
-  --font-body: "Open Sans", sans-serif;
+  --font-body: system-ui, -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   --font-mono: "Courier New", Courier, monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.85rem;
