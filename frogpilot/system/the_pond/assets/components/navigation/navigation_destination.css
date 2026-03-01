@@ -28,6 +28,11 @@
   color: var(--text-muted);
 }
 
+#searchSuggestions {
+  max-height: calc(100vh - 10rem);
+  overflow-y: auto;
+}
+
 #searchSuggestions p {
   font-size: var(--font-size-sm);
   margin: 0;
