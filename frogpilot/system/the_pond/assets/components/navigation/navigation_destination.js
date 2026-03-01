@@ -152,6 +152,11 @@ export function NavDestination() {
       return null;
     }
 
+    if (typeof AMapLoader === 'undefined') {
+      showSnackbar("高德地图加载器不可用，请检查网络连接。", "error");
+      return null;
+    }
+
     window._AMapSecurityConfig = {
       securityJsCode: state.amap2Key
     };
@@ -166,7 +171,8 @@ export function NavDestination() {
       return amapAutoComplete;
     }).catch(e => {
       console.error("Failed to load AMap SDK:", e);
-      showSnackbar("高德地图搜索不可用，请检查密钥和网络连接。", "error");
+      const msg = e?.message || e?.info || String(e);
+      showSnackbar(`高德地图加载失败: ${msg}`, "error");
       amapLoadPromise = null;
       return null;
     });
@@ -294,7 +300,7 @@ export function NavDestination() {
     const hasAMap = !!state.amap1Key && !!state.amap2Key;
     state.missingKeys = !hasMapbox;
     state.canToggleProvider = hasMapbox && hasAMap;
-    state.searchProvider = hasMapbox ? "mapbox" : (hasAMap ? "amap" : "");
+    state.searchProvider = hasAMap ? "amap" : (hasMapbox ? "mapbox" : "");
     if (state.missingKeys) return;
     state.lastPosition = {
       latitude: parseFloat(data.lastPosition.latitude),
