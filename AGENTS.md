@@ -213,3 +213,72 @@ third_party/       Vendored dependencies (acados, snpe, libyuv)
 6. **Environment flags**: `REPLAY`, `SIMULATION`, `TESTING_CLOSET` checked via `os.environ`
 7. **No relative imports** — always absolute from `openpilot.*`
 8. **No unittest** — always pytest
+
+## WHERE TO LOOK
+
+| Task | Location | Notes |
+|------|----------|-------|
+| Add/modify car port | `selfdrive/car/<brand>/` | See `selfdrive/car/AGENTS.md` for template |
+| Control tuning | `selfdrive/controls/lib/` | latcontrol_*, longcontrol, longitudinal_planner |
+| FrogPilot features | `frogpilot/` | See `frogpilot/AGENTS.md` — 400+ params |
+| FrogPilot web UI | `frogpilot/system/the_pond/` | Flask + Arrow.js SPA on port 8082 |
+| FrogPilot controls | `frogpilot/controls/` | Planner, CEM, speed limit controller |
+| ML model inference | `selfdrive/modeld/` | modeld.py + runners/ (THNEED/SNPE/ONNX) |
+| FrogPilot alt models | `frogpilot/tinygrad_modeld/` | TinyGrad runner, vision+policy ONNX |
+| Qt on-device UI | `selfdrive/ui/qt/` | C++ Qt5 widgets, maps, onroad display |
+| FrogPilot UI extensions | `frogpilot/ui/qt/` | Custom offroad panels, themes, screenrecorder |
+| System daemons (C++) | `system/` | loggerd, camerad, sensord — see `system/AGENTS.md` |
+| Process management | `system/manager/` | process_config.py defines all managed daemons |
+| Dev tools | `tools/` | replay, cabana (CAN analyzer), plotjuggler, sim |
+| Navigation backend | `selfdrive/navd/` | Mapbox directions API, NavInstruction messages |
+| Map rendering (C++) | `selfdrive/modeld/` | map_renderer.cc — 256×256 greyscale for model |
+| Speed limits | `frogpilot/controls/lib/speed_limit_controller.py` | Mapbox matching + OSM data |
+| Themes/assets | `frogpilot/assets/` | theme_manager.py, model_manager.py, NNFF models |
+| Translations | `selfdrive/ui/translations/` | 23 language files (Qt .ts format) |
+| CAN fingerprints | `selfdrive/car/<brand>/fingerprints.py` | FW_VERSIONS dict per platform |
+| Parameters (persist) | `common/params.py` | Params() key-value store, shared C++/Python |
+
+## FrogPilot Fork — Key Differences
+
+This is a FrogPilot fork of openpilot. FrogPilot adds 400+ configurable parameters, custom control logic, a web dashboard, themes, and alternative model runners.
+
+### FrogPilot Directory Structure
+
+```
+frogpilot/
+├── common/              # frogpilot_variables.py (400+ params), frogpilot_functions.py
+├── controls/            # frogpilot_planner.py, conditional experimental mode, speed limits
+├── system/              # the_pond/ (web UI), frogpilot_stats.py, speed_limit_filler.py
+├── ui/                  # Qt offroad panels, screenrecorder, FrogPilot UI state
+├── navigation/          # mapd.py (offline map daemon)
+├── assets/              # theme_manager.py, model_manager.py, NNFF models, toggle icons
+├── tinygrad_modeld/     # Alternative model runner using TinyGrad framework
+├── classic_modeld/      # Legacy model runner
+├── third_party/         # Vendored: influxdb_client, reactivex, urllib3
+├── tools/               # FrogPilot dev utilities
+└── frogpilot_process.py # Main FrogPilot daemon — toggle management
+```
+
+### FrogPilot Process Additions
+
+6 processes added to `system/manager/process_config.py`:
+- `frogpilot_process` — Feature toggle management daemon
+- `the_pond` — Web dashboard (Flask, port 8082)
+- `mapd` — Offline map data daemon
+- `speed_limit_filler` — OSM speed limit processing
+- `classic_modeld` / `tinygrad_modeld` — Alternative ML model runners
+
+### FrogPilot Integration Pattern
+
+FrogPilot hooks into base openpilot via:
+- `frogpilot_toggles` parameter passed through control chain (`controlsd` → `CarInterface.apply()`)
+- `get_frogpilot_params()` methods on `CarInterfaceBase` subclasses
+- Brand-specific `FrogPilotFlags` (e.g., `ToyotaFrogPilotFlags`, `HyundaiFrogPilotFlags`)
+- Custom cereal messages (`frogpilotModelV2`) for enhanced model outputs
+- `params_memory` for runtime toggle state (non-persistent)
+
+### FrogPilot Anti-Patterns
+
+- Never modify base openpilot files when FrogPilot overlay is possible
+- Never hardcode FrogPilot params — use `frogpilot_variables.py` toggle system
+- FrogPilot parameters use tuning levels 0-3 — respect level gating
