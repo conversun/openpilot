@@ -65,9 +65,9 @@ export function addRouteToMap(map, routes, start, dest, onRouteSelect, useMetric
       tooltip.style.border = "1px solid var(--border-color)";
       
       tooltip.innerHTML = `
-        <div class="tooltip-row" style="margin-bottom: 4px;"><span class="emoji">🛣️</span><span class="label"> 距离：</span><span class="value">${distStr}</span></div>
-        <div class="tooltip-row" style="margin-bottom: 4px;"><span class="emoji">⌛</span><span class="label"> 时长：</span><span class="value">${durStr}</span></div>
-        <div class="tooltip-row"><span class="emoji">🕗</span><span class="label"> 预计到达：</span><span class="value">${eta}</span></div>
+        <div class="tooltip-row" style="margin-bottom: 4px;"><span class="emoji"><i class="bi bi-signpost-2-fill"></i></span><span class="label"> 距离：</span><span class="value">${distStr}</span></div>
+        <div class="tooltip-row" style="margin-bottom: 4px;"><span class="emoji"><i class="bi bi-hourglass-split"></i></span><span class="label"> 时长：</span><span class="value">${durStr}</span></div>
+        <div class="tooltip-row"><span class="emoji"><i class="bi bi-clock-fill"></i></span><span class="label"> 预计到达：</span><span class="value">${eta}</span></div>
       `;
 
       infoWindow = new AMap.InfoWindow({

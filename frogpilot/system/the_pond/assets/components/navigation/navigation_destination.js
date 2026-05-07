@@ -630,7 +630,7 @@ state.amap1Key = data.amap1Key?.trim() || "";
                 <div class="search-wrapper">
                   <div class="search-controls">
                     <input autocomplete="off" id="search-field" class="${() => state.searchLoading ? 'searching' : ''}" placeholder="在此搜索" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" @compositionstart="${() => { isComposing = true; }}" @compositionend="${(e) => { isComposing = false; searchInput(e); }}" />
-                    ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}">❤️ 收藏</button>` : "")}
+                    ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}"><i class="bi bi-heart-fill"></i> 收藏</button>` : "")}
                   </div>
                   <div id="infobox">
                     ${() => {
@@ -825,17 +825,17 @@ function NavigationDestination({
     <div class="navigation-summary-widget">
       <div class="navigation-summary-title">${name}</div>
       <div class="summary-row">
-        <span class="emoji">🛣️</span>
+        <span class="emoji"><i class="bi bi-signpost-2-fill"></i></span>
         <span class="label">距离：</span>
         <span class="value">${formatMetersToHuman(distance, isMetric)}</span>
       </div>
       <div class="summary-row">
-        <span class="emoji">⌛</span>
+        <span class="emoji"><i class="bi bi-hourglass-split"></i></span>
         <span class="label">时长：</span>
         <span class="value">${formatSecondsToHuman(duration)}</span>
       </div>
       <div class="summary-row">
-        <span class="emoji">🕗</span>
+        <span class="emoji"><i class="bi bi-clock-fill"></i></span>
         <span class="label">预计到达：</span>
         <span class="value">${etaString}</span>
       </div>
@@ -844,7 +844,7 @@ function NavigationDestination({
           isConfirmed()
             ? html`<button class="cancel" @click="${cancelNavigation}"><i class="bi bi-x-lg"></i> 取消导航</button>`
             : html`<button class="directions" @click="${confirmDestination}"><i class="bi bi-sign-turn-right"></i> 开始导航</button>`}
-        <button class="favorite" @click="${toggleFavorite}">${isFavorited ? "💔 取消收藏" : "❤️ 收藏"}</button>
+        <button class="favorite" @click="${toggleFavorite}">${isFavorited ? html`<i class="bi bi-heartbreak-fill"></i> 取消收藏` : html`<i class="bi bi-heart-fill"></i> 收藏`}</button>
       </div>
     </div>
   `;
