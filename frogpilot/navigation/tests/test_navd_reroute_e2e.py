@@ -121,13 +121,28 @@ def _stub_navd_dependencies():
   helpers_mod.coordinate_from_param = lambda key, params: None
   helpers_mod.distance_along_geometry = lambda geom, pos: 0.0
   helpers_mod.maxspeed_to_ms = lambda spec: 0.0
-  helpers_mod.minimum_distance = lambda a, b, p: 0.0
+  def _real_minimum_distance(a, b, p):
+    """Real Euclidean point-to-segment distance in meters — lets should_recompute's
+    off-route detection actually fire when last_position is far from route_geometry."""
+    import math as _m
+    ax, ay = a.longitude, a.latitude
+    bx, by = b.longitude, b.latitude
+    px, py = p.longitude, p.latitude
+    seg_lensq = (bx - ax) ** 2 + (by - ay) ** 2
+    if seg_lensq == 0:
+      return _m.hypot(px - ax, py - ay) * 111000
+    t = max(0.0, min(1.0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / seg_lensq))
+    proj_x = ax + t * (bx - ax)
+    proj_y = ay + t * (by - ay)
+    return _m.hypot(px - proj_x, py - proj_y) * 111000
+  helpers_mod.minimum_distance = _real_minimum_distance
   helpers_mod.parse_banner_instructions = lambda *args, **kwargs: None
   sys.modules["openpilot.selfdrive.navd.helpers"] = helpers_mod
 
 
 _stub_navd_dependencies()
 from openpilot.selfdrive.navd.navd import (  # noqa: E402
+  REROUTE_COUNTER_MIN,
   REROUTE_POS_STD_THRESHOLD,
   should_skip_reroute_due_to_gps,
 )
@@ -334,10 +349,10 @@ class TestRouteEngineReroute:
     assert engine.step_idx == 0, "step_idx must not be reset"
 
   def test_recompute_route_off_route_drives_fresh_amap_call(self, fake_navd_module):
-    """True end-to-end reroute: simulate GPS deviation by mocking should_recompute to True,
-    then call recompute_route() (NOT calculate_route directly). Verify fetch_amap_route is
-    invoked with the NEW deviated last_position, not the original origin from the active route.
-    """
+    """True end-to-end reroute: REAL distance logic detects off-route condition,
+    REAL recompute_counter accrues across ticks, REAL recompute_route() fires the
+    AMap call. We do NOT patch should_recompute or the counter — only the I/O
+    boundary (fetch_amap_route, coordinate_from_param) is mocked."""
     engine = self._make_engine(fake_navd_module)
     engine.params.get_bool.return_value = True
     engine.params.get.side_effect = lambda key, encoding=None: {
@@ -347,15 +362,20 @@ class TestRouteEngineReroute:
 
     destination = fake_navd_module.Coordinate(22.64, 113.82)
     engine.nav_destination = destination
-    engine.route = [{"distance": 1000.0}]
-    engine.route_geometry = [[fake_navd_module.Coordinate(22.61, 114.03)]]
+    engine.route = [{"distance": 1000.0}, {"distance": 1000.0}]  # >=2 steps so step_idx=0 isn't the last segment
+    # Real route geometry: a straight line across ~111m heading east
+    a = fake_navd_module.Coordinate(22.6100, 114.0300)
+    b = fake_navd_module.Coordinate(22.6100, 114.0310)
+    engine.route_geometry = [[a, b]]
     engine.step_idx = 0
 
-    deviated_position = fake_navd_module.Coordinate(22.62, 114.06)
+    # Deviate ~111m NORTH of the route segment (well over 25m threshold)
+    deviated_position = fake_navd_module.Coordinate(22.6110, 114.0305)
     engine.last_position = deviated_position
     engine.gps_ok = True
     engine.position_std_norm = 5.0
     engine.recompute_countdown = 0
+    engine.reroute_counter = 0
 
     captured_origins: list[tuple[float, float]] = []
 
@@ -374,22 +394,34 @@ class TestRouteEngineReroute:
         }]},
       }
 
-    coord_helper = fake_navd_module.Coordinate
-
     def stub_coord_from_param(key, params):
       if key == "NavDestination":
         return destination
       return None
 
+    # Sanity check: confirm REAL minimum_distance sees us as off-route
+    from openpilot.selfdrive.navd.helpers import minimum_distance
+    actual_offset = minimum_distance(a, b, deviated_position)
+    assert actual_offset > 25, (
+      f"test setup invalid: deviated_position is only {actual_offset:.1f}m from route, "
+      "need >25m for should_recompute to trigger"
+    )
+
     with patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch), \
          patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get"), \
-         patch.object(engine, "should_recompute", return_value=True), \
          patch("openpilot.selfdrive.navd.navd.coordinate_from_param", side_effect=stub_coord_from_param), \
          patch("builtins.open"):
-      engine.recompute_route()
+      # Tick recompute_route() enough times for reroute_counter to exceed REROUTE_COUNTER_MIN.
+      # Each tick should accrue +1 to reroute_counter via REAL should_recompute() distance math.
+      for _ in range(REROUTE_COUNTER_MIN + 2):
+        engine.recompute_route()
+        if captured_origins:
+          break
 
-    assert len(captured_origins) == 1, \
-      f"recompute_route should drive exactly one fresh AMap call, got {len(captured_origins)}"
+    assert len(captured_origins) == 1, (
+      f"recompute_route should fire exactly one AMap call after "
+      f"REROUTE_COUNTER_MIN+1 off-route ticks; got {len(captured_origins)}"
+    )
     actual_origin = captured_origins[0]
     assert actual_origin == (deviated_position.longitude, deviated_position.latitude), (
       f"reroute must use the deviated current position, got {actual_origin} "

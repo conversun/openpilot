@@ -205,6 +205,30 @@ def setup(app):
     except ValueError:
       return {"error": "Invalid lng/lat"}, 400
 
+  def _normalize_amap_v5_route(amap_response):
+    """Add `time` (alias of cost.duration) and `polyline` (stitched step polylines)
+    to each path in an AMap v5 driving response so the frontend can consume it as a
+    simple flat shape. AMap v5 returns cost.duration / steps[].polyline / tmcs[].tmc_polyline
+    natively; the navigation_utilities.js renderer wants `time` and a top-level `polyline`."""
+    paths = ((amap_response.get("route") or {}).get("paths")) or []
+    for path in paths:
+      cost = path.get("cost") or {}
+      if "time" not in path:
+        path["time"] = path.get("duration") or cost.get("duration") or "0"
+      if "polyline" not in path or not path["polyline"]:
+        segments = []
+        for step in path.get("steps") or []:
+          step_pl = step.get("polyline")
+          if isinstance(step_pl, str) and step_pl:
+            segments.append(step_pl)
+            continue
+          for tmc in step.get("tmcs") or []:
+            tmc_pl = tmc.get("tmc_polyline") or tmc.get("polyline")
+            if isinstance(tmc_pl, str) and tmc_pl:
+              segments.append(tmc_pl)
+        path["polyline"] = ";".join(segments)
+    return amap_response
+
   @app.route("/api/route", methods=["GET"])
   def amap_route():
     origin = request.args.get("origin")
@@ -217,14 +241,17 @@ def setup(app):
       d_lng, d_lat = map(float, destination.split(","))
       go_lng, go_lat = wgs84_to_gcj02(o_lng, o_lat)
       gd_lng, gd_lat = wgs84_to_gcj02(d_lng, d_lat)
-      return _amap_request("/v5/direction/driving", {
-        "origin": f"{go_lng:.6f},{go_lat:.6f}",
-        "destination": f"{gd_lng:.6f},{gd_lat:.6f}",
-        "strategy": strategy,
-        "show_fields": "polyline"
-      })
     except ValueError:
       return {"error": "Invalid coords"}, 400
+    data, code = _amap_request("/v5/direction/driving", {
+      "origin": f"{go_lng:.6f},{go_lat:.6f}",
+      "destination": f"{gd_lng:.6f},{gd_lat:.6f}",
+      "strategy": strategy,
+      "show_fields": "cost,polyline,tmcs",
+    })
+    if code == 200 and isinstance(data, dict) and str(data.get("status", "0")) == "1":
+      data = _normalize_amap_v5_route(data)
+    return data, code
 
   # Note: legacy GET /api/params handler at the bottom of this file uses ?key=<single>
   # and returns plain text; this one uses ?keys=<csv> and returns JSON. Merged into a
