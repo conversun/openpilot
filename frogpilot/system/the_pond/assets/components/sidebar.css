@@ -54,9 +54,13 @@
 }
 
 .section-title {
+  color: var(--main-fg);
   display: block;
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
   padding: 0.5em 0.1em;
+  text-transform: uppercase;
 }
 
 .sidebar {
@@ -102,13 +106,13 @@
   padding: 0;
 }
 
-.sidebar .menu_section > li > a span {
+/* Inner span inside menu-item-link — carries the link label */
+.sidebar .menu_section > li > ul > li > a span,
+.sidebar .menu-item-link span {
   color: var(--text-color);
   display: inline-block;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  margin-bottom: var(--padding-xs);
-  padding-left: var(--padding-sm);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-demi-bold);
 }
 
 .sidebar .menu_section > li > ul {

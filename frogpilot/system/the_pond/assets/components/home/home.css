@@ -6,7 +6,12 @@
 }
 
 .disk .progress {
-  background: linear-gradient(to right, green 0%, yellow 80%, orange 90%, red 100%);
+  /* Mostly green, only turns amber after 80% and red after 95% — fits FrogPilot palette */
+  background: linear-gradient(to right,
+    var(--success-fg) 0%,
+    var(--success-fg) 70%,
+    var(--warning-bg) 85%,
+    var(--danger-fg) 97%);
   border-radius: var(--border-radius-md);
   height: var(--padding-base);
   overflow: hidden;
@@ -78,4 +83,46 @@
     gap: 0.5em 1em;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
+}
+
+/* Commit hash row: truncate the long hex, expose a copy button. */
+.software-info-row {
+  align-items: center;
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.software-info-row strong {
+  flex-shrink: 0;
+}
+
+.software-info-row .commit-hash {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-button {
+  background: transparent;
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  transition: all var(--transition-fast);
+}
+
+.copy-button:hover {
+  background: var(--sidebar-active-bg);
+  color: var(--text-color);
+}
+
+.copy-button.copied {
+  background: var(--success-bg);
+  border-color: var(--success-fg);
+  color: var(--text-color);
 }

@@ -31,20 +31,43 @@ function DriveStat(title, stats = {}, defaultUnit) {
   `;
 }
 
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add("copied");
+    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    setTimeout(() => {
+      btn.classList.remove("copied");
+      btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+    }, 1500);
+  });
+}
+
 function renderSoftwareInfo(info = {}) {
   const fields = [
     ["分支名称", info.branchName],
     ["构建环境", info.buildEnvironment],
-    ["提交哈希", info.commitHash],
+    ["提交哈希", info.commitHash, { mono: true, copy: true }],
     ["Fork 维护者", info.forkMaintainer],
     ["可用更新", info.updateAvailable],
     ["版本日期", info.versionDate],
   ];
 
-  return fields.map(
-    ([label, value]) =>
-      html`<p><strong>${label}:</strong> ${value ?? "未知"}</p>`
-  );
+  return fields.map(([label, value, opts = {}]) => {
+    const v = value ?? "未知";
+    if (opts.copy && value) {
+      const short = String(value).length > 10 ? String(value).slice(0, 8) + "…" : String(value);
+      return html`
+        <p class="software-info-row">
+          <strong>${label}:</strong>
+          <span class="commit-hash" title="${value}">${short}</span>
+          <button class="copy-button" title="复制完整哈希" @click="${(e) => copyToClipboard(value, e.currentTarget)}">
+            <i class="bi bi-clipboard"></i>
+          </button>
+        </p>
+      `;
+    }
+    return html`<p><strong>${label}:</strong> ${v}</p>`;
+  });
 }
 
 function renderDiskUsageSection({ diskError, diskUsage }) {
