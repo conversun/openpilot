@@ -206,3 +206,129 @@
 .key-reveal-actions .copy-button.copied {
   background: var(--success-bg);
 }
+
+/* ─── 路线偏好 toggle + strategy picker ─── */
+
+.strategy-toggle-row {
+  align-items: center;
+  display: flex;
+  gap: var(--gap-md);
+  margin-bottom: var(--margin-base);
+}
+
+.strategy-toggle-label {
+  flex: 1;
+  margin: 0;
+}
+
+/* iOS-style toggle switch */
+.toggle-switch {
+  background: var(--input-bg);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 2px;
+  position: relative;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  width: 48px;
+}
+
+.toggle-switch.on {
+  background: var(--success-bg);
+  border-color: var(--success-fg);
+}
+
+.toggle-switch .toggle-thumb {
+  background: var(--text-color);
+  border-radius: 50%;
+  display: block;
+  height: 22px;
+  transition: transform var(--transition-fast);
+  width: 22px;
+}
+
+.toggle-switch.on .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-switch:focus-visible {
+  outline: 2px solid var(--main-fg);
+  outline-offset: 2px;
+}
+
+/* Strategy card list */
+.strategy-section {
+  margin-bottom: var(--margin-base);
+}
+
+.strategy-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  margin-top: var(--gap-sm);
+}
+
+.strategy-option {
+  align-items: center;
+  background: var(--input-bg);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-color);
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  gap: var(--gap-sm);
+  padding: var(--padding-xs) var(--padding-sm);
+  text-align: left;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  width: 100%;
+}
+
+.strategy-option:hover {
+  background: var(--sidebar-active-bg);
+  border-color: var(--main-fg);
+}
+
+.strategy-option.selected {
+  background: var(--sidebar-active-bg);
+  border-color: var(--main-fg);
+  box-shadow: 0 0 0 1px var(--main-fg);
+}
+
+.strategy-code {
+  background: var(--main-bg);
+  border-radius: var(--border-radius-sm);
+  color: var(--main-fg);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  min-width: 2.6em;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.strategy-label {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+.strategy-hint {
+  background: var(--main-fg);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-color);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  padding: 1px 6px;
+}
+
+.strategy-check {
+  color: var(--main-fg);
+  font-size: var(--font-size-lg);
+  margin-left: var(--gap-xs);
+}

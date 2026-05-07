@@ -307,27 +307,36 @@ export function NavKeys() {
       <div class="navkeys-container">
         <div class="navkeys-group">
           <div class="navkeys-title">路线偏好</div>
-          <div style="margin-bottom: 15px; display: flex; align-items: center;">
-            <label class="navkeys-label" style="margin: 0; flex: 1;">使用高德路径规划</label>
-            <input type="checkbox" style="width: 24px; height: 24px;" checked="${() => state.useAMapRouting}" @change="${(e) => {
-              state.useAMapRouting = e.target.checked;
-              api.saveParams();
-            }}" />
+          <div class="strategy-toggle-row">
+            <label class="navkeys-label strategy-toggle-label">使用高德路径规划</label>
+            <button type="button"
+                    role="switch"
+                    class="${() => `toggle-switch ${state.useAMapRouting ? "on" : "off"}`}"
+                    aria-checked="${() => state.useAMapRouting ? "true" : "false"}"
+                    @click="${() => { state.useAMapRouting = !state.useAMapRouting; api.saveParams(); }}">
+              <span class="toggle-thumb"></span>
+            </button>
           </div>
-          <div style="margin-bottom: 15px;">
+          <div class="strategy-section">
             <label class="navkeys-label">策略选择</label>
-            <select style="width: 100%; padding: 10px; border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);" value="${() => state.amapRouteStrategy}" @change="${(e) => {
-              state.amapRouteStrategy = parseInt(e.target.value);
-              api.saveParams();
-            }}">
-              <option value="32" selected="${() => state.amapRouteStrategy === 32}">32 - 默认 (推荐)</option>
-              <option value="33" selected="${() => state.amapRouteStrategy === 33}">33 - 躲避拥堵</option>
-              <option value="34" selected="${() => state.amapRouteStrategy === 34}">34 - 高速优先</option>
-              <option value="35" selected="${() => state.amapRouteStrategy === 35}">35 - 不走高速</option>
-              <option value="38" selected="${() => state.amapRouteStrategy === 38}">38 - 速度最快</option>
-              <option value="45" selected="${() => state.amapRouteStrategy === 45}">45 - 躲避拥堵 + 速度最快</option>
-            </select>
-          </div>
+            <div class="strategy-list">
+              ${[
+                [32, "默认", "推荐"],
+                [33, "躲避拥堵", ""],
+                [34, "高速优先", ""],
+                [35, "不走高速", ""],
+                [38, "速度最快", ""],
+                [45, "躲避拥堵 + 速度最快", ""],
+              ].map(([code, label, hint]) => html`
+                <button type="button"
+                        class="${() => `strategy-option ${state.amapRouteStrategy === code ? "selected" : ""}`}"
+                        @click="${() => { state.amapRouteStrategy = code; api.saveParams(); }}">
+                  <span class="strategy-code">${code}</span>
+                  <span class="strategy-label">${label}${hint ? html`<span class="strategy-hint">${hint}</span>` : ""}</span>
+                  ${() => state.amapRouteStrategy === code ? html`<i class="bi bi-check-lg strategy-check"></i>` : ""}
+                </button>
+              `)}
+            </div>
         </div>
         ${renderStatus("options")}
       </div>
