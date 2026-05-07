@@ -1,5 +1,20 @@
 # AGENTS.md — frogpilot/navigation/
 
+## Overlay direction note (intentional exception to base→overlay rule)
+
+`frogpilot/AGENTS.md` says "never modify base openpilot files when overlay is possible" and base shouldn't import from `frogpilot.*`. This module is an **explicit exception**:
+
+  `selfdrive/navd/navd.py` (base) imports from `openpilot.frogpilot.navigation.amap_route_adapter`
+
+Why we accept this:
+
+1. The fork already has precedent — `selfdrive/navd/navd.py` imports `openpilot.frogpilot.common.frogpilot_variables.get_frogpilot_toggles` for FrogPilot toggles in CEM logic.
+2. The alternative (forking navd.py wholesale into `frogpilot/navigation/navd.py` and re-registering it as a separate process) duplicates ~500 lines of base openpilot code that needs to track upstream changes.
+3. The import is gated by a runtime param check (`UseAMapRouting`); when disabled, navd never executes the import and behaves identically to vanilla openpilot.
+4. The adapter contains zero base-openpilot logic — it's a pure REST/JSON converter. Reverse-coupling here cannot regress base behavior.
+
+If upstream openpilot ever pulls navd.py from this fork, they'd need to either include the AMap branch (unlikely) or strip the conditional import (trivial — it's wrapped in `if use_amap`). Mark the AMap import as a known fork-specific divergence in any rebase ledger.
+
 FrogPilot navigation overlay. Two independent subsystems live here:
 
 1. **AMap (高德) routing pipeline** — for users behind GFW. Replaces Mapbox driving directions with AMap v5.

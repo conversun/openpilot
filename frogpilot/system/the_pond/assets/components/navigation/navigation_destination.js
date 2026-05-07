@@ -90,13 +90,18 @@ export function NavDestination() {
   const searchFieldState = reactive({ value: "" });
 
   let amapLoadPromise = null;
-  let amapAutoComplete = null;
+  let amapNamespace = null;
+let amapAutoComplete = null;
   let searchRequestId = 0;
   let isComposing = false;
   let drawnRoutes = [];
 
+  /**
+   * Loads AMap JS API v2 once and returns the AMap namespace.
+   * Callers needing the AutoComplete instance must call ensureAMapAutoComplete().
+   */
   async function ensureAMapLoaded() {
-    if (amapAutoComplete) return amapAutoComplete;
+    if (amapNamespace) return amapNamespace;
     if (amapLoadPromise) return await amapLoadPromise;
 
     if (!state.amap1Key || !state.amap2Key) {
@@ -118,8 +123,8 @@ export function NavDestination() {
       version: '2.0',
       plugins: ['AMap.AutoComplete', 'AMap.PlaceSearch', 'AMap.Geocoder']
     }).then(AMap => {
-      amapAutoComplete = new AMap.AutoComplete({ city: '全国', datatype: 'all' });
-      return amapAutoComplete;
+      amapNamespace = AMap;
+      return AMap;
     }).catch(e => {
       console.error("Failed to load AMap SDK:", e);
       showSnackbar(`高德地图加载失败: ${e?.message || e?.info || String(e)}`, "error");
@@ -128,6 +133,14 @@ export function NavDestination() {
     });
 
     return await amapLoadPromise;
+  }
+
+  async function ensureAMapAutoComplete() {
+    if (amapAutoComplete) return amapAutoComplete;
+    const AMap = await ensureAMapLoaded();
+    if (!AMap) return null;
+    amapAutoComplete = new AMap.AutoComplete({ city: '全国', datatype: 'all' });
+    return amapAutoComplete;
   }
 
   function confirmRemoveFavorite(favorite) {
@@ -301,7 +314,7 @@ export function NavDestination() {
       state.searchLoading = true;
       const currentRequestId = ++searchRequestId;
       try {
-        const auto = await ensureAMapLoaded();
+        const auto = await ensureAMapAutoComplete();
         if (!auto) { state.searchLoading = false; return; }
         auto.search(val, (status, result) => {
           if (currentRequestId !== searchRequestId) return;
@@ -461,7 +474,7 @@ export function NavDestination() {
       state.searchLoading = true;
       const currentRequestId = ++searchRequestId;
       try {
-        const auto = await ensureAMapLoaded();
+        const auto = await ensureAMapAutoComplete();
         if (!auto) { state.searchLoading = false; return; }
         auto.search(val, (status, result) => {
           if (currentRequestId !== searchRequestId) return;

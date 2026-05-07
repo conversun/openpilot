@@ -226,22 +226,25 @@ def setup(app):
     except ValueError:
       return {"error": "Invalid coords"}, 400
 
-  @app.route("/api/params", methods=["GET"])
-  def get_params():
-    keys = request.args.get("keys", "").split(",")
-    res = {}
-    for k in keys:
-      if k:
-        res[k] = params.get(k, encoding="utf8") or ""
-    return res, 200
+  # Note: legacy GET /api/params handler at the bottom of this file uses ?key=<single>
+  # and returns plain text; this one uses ?keys=<csv> and returns JSON. Merged into a
+  # single handler below to avoid Flask route collision.
+
 
   @app.route("/api/params", methods=["POST"])
   def set_params():
     data = request.get_json() or {}
+    allowed_strategies = {"32", "33", "34", "35", "38", "45"}
     allowed_keys = {"UseAMapRouting", "AMapRouteStrategy"}
     for k, v in data.items():
-      if k in allowed_keys:
-        params.put(k, str(v))
+      if k not in allowed_keys:
+        continue
+      sv = str(v)
+      if k == "AMapRouteStrategy" and sv not in allowed_strategies:
+        return {"error": f"AMapRouteStrategy must be one of {sorted(allowed_strategies)}"}, 400
+      if k == "UseAMapRouting" and sv not in {"0", "1"}:
+        return {"error": "UseAMapRouting must be '0' or '1'"}, 400
+      params.put(k, sv)
     return {"message": "Params updated"}, 200
 
   @app.route("/api/navigation", methods=["GET"])
@@ -406,6 +409,16 @@ def setup(app):
 
   @app.route("/api/params", methods=["GET"])
   def get_param():
+    """Read params via either ?key=<single> (returns plain text) or ?keys=<csv> (returns JSON).
+    The CSV form is preferred; the single-key form is kept for backward compat with existing callers."""
+    keys_csv = request.args.get("keys")
+    if keys_csv:
+      result = {}
+      for k in keys_csv.split(","):
+        k = k.strip()
+        if k:
+          result[k] = params.get(k, encoding="utf8") or ""
+      return jsonify(result), 200
     return params.get(request.args.get("key")) or "", 200
 
   @app.route("/api/params_memory", methods=["GET"])

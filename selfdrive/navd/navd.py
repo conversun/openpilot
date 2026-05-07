@@ -31,6 +31,21 @@ REROUTE_COUNTER_MIN = 3
 REROUTE_POS_STD_THRESHOLD = 30.0
 
 
+def should_skip_reroute_due_to_gps(gps_ok: bool, position_std_norm: float,
+                                  has_route: bool, destination_changed: bool,
+                                  threshold: float = REROUTE_POS_STD_THRESHOLD) -> bool:
+  """Pure-function reroute guard, factored out of recompute_route() for unit testing.
+
+  Returns True iff the recompute should be SKIPPED. Rules:
+   - If no route is active, never skip (initial fetch is always allowed)
+   - If the destination changed, never skip (user intent overrides GPS quality)
+   - Otherwise skip when gps_ok is False or position std exceeds the threshold
+  """
+  if not has_route or destination_changed:
+    return False
+  return (not gps_ok) or position_std_norm > threshold
+
+
 class RouteEngine:
   def __init__(self, sm, pm):
     self.sm = sm
@@ -132,15 +147,21 @@ class RouteEngine:
       return
 
     should_recompute = self.should_recompute()
-    if new_destination != self.nav_destination:
+    destination_changed = new_destination != self.nav_destination
+    if destination_changed:
       cloudlog.warning(f"Got new destination from NavDestination param {new_destination}")
       should_recompute = True
 
-    # Don't recompute when GPS is unreliable. Two guards:
+    # GPS-quality guard: skip OFF-ROUTE reroutes when GPS is unreliable.
+    # We do NOT block destination changes — if the user explicitly sets a new destination,
+    # try to compute the route even with degraded GPS (locationd's last known position is
+    # still our best guess; failing here would never recover until GPS comes back).
     #  1) gps_ok==False — locationd has decided GPS is gone (2s after last fix)
     #  2) position_std_norm > 30m — Kalman uncertainty too high (catches tunnel drift
     #     and multipath at tunnel entrance/exit before gps_ok flips)
-    if self.step_idx is not None and (not self.gps_ok or self.position_std_norm > REROUTE_POS_STD_THRESHOLD):
+    if should_skip_reroute_due_to_gps(self.gps_ok, self.position_std_norm,
+                                      has_route=(self.step_idx is not None),
+                                      destination_changed=destination_changed):
       return
 
     if self.recompute_countdown == 0 and should_recompute:
@@ -153,8 +174,11 @@ class RouteEngine:
 
   def calculate_route(self, destination):
     cloudlog.warning(f"Calculating route {self.last_position} -> {destination}")
-    self.nav_destination = destination
-
+    # NB: do NOT set self.nav_destination here. We assign it only after a route fetch +
+    # parse succeeds (right before send_route()). Otherwise a failed AMap call followed
+    # by 'preserve route on failure' would leave self.nav_destination pointing at the
+    # NEW destination while self.route still references the OLD one — the destination
+    # comparison in recompute_route() would then never trigger another retry.
     lang = self.params.get('LanguageSetting', encoding='utf8')
     if lang is not None:
       lang = lang.replace('main_', '')
@@ -330,6 +354,9 @@ class RouteEngine:
           maxspeed_idx -= 1  # Every segment ends with the same coordinate as the start of the next
 
         self.step_idx = 0
+        # Only commit nav_destination after a successful route build. See note in
+        # calculate_route docstring: prevents stuck-route bug on transient AMap failures.
+        self.nav_destination = destination
       else:
         cloudlog.warning("Got empty route response")
         self.clear_route()
