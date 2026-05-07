@@ -1,0 +1,61 @@
+.status-bar {
+  align-items: center;
+  background: var(--secondary-bg);
+  border-bottom: 1px solid var(--sidebar-border-color);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  gap: var(--gap-xs);
+  margin: 0 calc(-1 * var(--padding-lg)) var(--margin-base);
+  padding: var(--padding-xs) var(--padding-lg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.status-badge {
+  align-items: center;
+  background: var(--input-bg);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  font-weight: var(--font-weight-demi-bold);
+  gap: var(--gap-xs);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.status-badge i {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.status-badge.status-ok {
+  border-color: var(--success-fg);
+  color: var(--success-fg);
+}
+
+.status-badge.status-warn {
+  border-color: var(--warning-bg);
+  color: var(--warning-bg);
+}
+
+.status-badge.status-err {
+  border-color: var(--danger-fg);
+  color: var(--danger-fg);
+}
+
+.status-badge.status-dim {
+  color: var(--text-muted);
+}
+
+.status-badge.status-loading {
+  color: var(--text-muted);
+}
+
+@media only screen and (max-width: 768px) and (orientation: portrait) {
+  .status-bar {
+    margin: 0 -1rem var(--margin-base);
+    padding: var(--padding-xs) 1rem;
+  }
+}

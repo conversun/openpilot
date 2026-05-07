@@ -10,6 +10,7 @@ import { RouteRecordings } from "/assets/components/recordings/dashcam_routes.js
 import { SettingsView } from "/assets/components/settings.js"
 import { ScreenRecordings } from "/assets/components/recordings/screen_recordings.js"
 import { Sidebar } from "/assets/components/sidebar.js"
+import { StatusBar } from "/assets/components/status_bar.js"
 import { SpeedLimits } from "/assets/components/tools/speed_limits.js"
 import { TailscaleControl } from "/assets/components/tailscale/tailscale.js"
 import { ThemeMaker } from "/assets/components/tools/theme_maker.js"
@@ -72,9 +73,13 @@ function Root() {
     })
   })
 
+  // Mount once — StatusBar holds its own polling state across route changes.
+  const statusBar = StatusBar()
+
   return html`
     ${() => Sidebar(routerState.activePathFull)}
     <div class="content">
+      ${statusBar}
       ${() => {
         if (!routerState.initialized || routerState.navigation.state === "loading") {
     return html`<div>加载中...</div>`

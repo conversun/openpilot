@@ -189,6 +189,82 @@ def setup(app):
     except Exception as e:
       return {"error": str(e)}, 500
 
+  def _probe_amap_health():
+    """Probe AMap REST and read related params. Used by /api/health."""
+    out = {
+      "routing_enabled": params.get_bool("UseAMapRouting"),
+      "strategy": params.get("AMapRouteStrategy", encoding="utf8") or "32",
+      "key_set": False,
+      "rest_ok": False,
+      "latency_ms": None,
+      "error": None,
+    }
+    web_key = params.get("AMapWebKey", encoding="utf8")
+    out["key_set"] = bool(web_key)
+    if not web_key:
+      out["error"] = "AMapWebKey not set"
+      return out
+    try:
+      t0 = time.time()
+      r = requests.get("https://restapi.amap.com/v3/ip", params={"key": web_key}, timeout=4)
+      out["latency_ms"] = int((time.time() - t0) * 1000)
+      if r.status_code == 200:
+        try:
+          j = r.json()
+          if str(j.get("status")) == "1" or str(j.get("infocode")) == "10000":
+            out["rest_ok"] = True
+          else:
+            out["error"] = j.get("info") or "AMap rejected request"
+        except Exception:
+          out["error"] = "Invalid AMap response"
+      else:
+        out["error"] = f"HTTP {r.status_code}"
+    except requests.RequestException as e:
+      out["error"] = str(e)[:200]
+    return out
+
+  def _probe_mapbox_health():
+    """Probe Mapbox styles endpoint. 401/403 still counts as 'reachable'."""
+    out = {
+      "key_set": False,
+      "reachable": False,
+      "latency_ms": None,
+      "error": None,
+    }
+    secret_key = params.get("MapboxSecretKey", encoding="utf8")
+    out["key_set"] = bool(secret_key)
+    if not secret_key:
+      out["error"] = "MapboxSecretKey not set"
+      return out
+    try:
+      t0 = time.time()
+      # HEAD /styles is cheap and counts as reachability.
+      r = requests.head("https://api.mapbox.com/styles/v1/mapbox/streets-v12",
+                        params={"access_token": secret_key}, timeout=4)
+      out["latency_ms"] = int((time.time() - t0) * 1000)
+      if r.status_code in (200, 401, 403):
+        out["reachable"] = True
+        if r.status_code != 200:
+          out["error"] = f"Auth: HTTP {r.status_code}"
+      else:
+        out["error"] = f"HTTP {r.status_code}"
+    except requests.RequestException as e:
+      out["error"] = str(e)[:200]
+    return out
+
+  @app.route("/api/health", methods=["GET"])
+  def health_check():
+    """Run AMap + Mapbox probes in parallel; cap total wall-time at ~4s per probe."""
+    with ThreadPoolExecutor(max_workers=2) as ex:
+      fa = ex.submit(_probe_amap_health)
+      fm = ex.submit(_probe_mapbox_health)
+      return jsonify({
+        "amap": fa.result(),
+        "mapbox": fm.result(),
+        "slc_filler": params.get_bool("SLCMapboxFiller"),
+        "ts": time.time(),
+      }), 200
+
   @app.route("/api/geocode/forward", methods=["GET"])
   def amap_forward_geocode():
     q = request.args.get("q")
