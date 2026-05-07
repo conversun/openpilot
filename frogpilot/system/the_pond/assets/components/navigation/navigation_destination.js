@@ -144,6 +144,10 @@ let amapAutoComplete = null;
     return amapAutoComplete;
   }
 
+  function areRoutesEqual(a, b) {
+    return a?.routeHash && b?.routeHash && a.routeHash === b.routeHash;
+  }
+
   function confirmRemoveFavorite(favorite) {
     state.favoriteToRemove = favorite;
     state.showRemoveFavoriteModal = true;
