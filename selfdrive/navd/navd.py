@@ -172,26 +172,41 @@ class RouteEngine:
 
     coords_str = ';'.join([f'{lon},{lat}' for lon, lat in coords])
     url = self.mapbox_host + '/directions/v5/mapbox/driving-traffic/' + coords_str
-    # NavRouteOverride lets external sources (e.g. The Pond's AMap adapter) bypass the
-    # Mapbox API entirely. Useful for users behind GFW or who need their route to match
-    # whatever app (CarPlay AMap/Gaode) the driver is following. The override is a Mapbox-shaped
-    # JSON document; we consume it on read so reroutes follow the normal Mapbox path.
-    override_json = self.params.get("NavRouteOverride", encoding='utf8')
-    override_data = None  # populated only when NavRouteOverride parses to a Mapbox-shaped dict with 'routes'
-    if override_json:
-      try:
-        parsed = json.loads(override_json)
-        if isinstance(parsed, dict) and parsed.get('routes'):
-          override_data = parsed
-      except json.JSONDecodeError:
-        cloudlog.exception("NavRouteOverride parse failed; falling back to Mapbox")
+    # When UseAMapRouting is enabled and AMapWebKey is set, route through AMap (高德) v5
+    # driving API instead of Mapbox. Used by drivers in mainland China where Mapbox is
+    # blocked by GFW and where the route should match what they see on AMap-based CarPlay.
+    # Reroutes naturally hit AMap too (gated by the same toggle), unlike the previous
+    # NavRouteOverride approach which only worked for the first segment.
+    use_amap = self.params.get_bool("UseAMapRouting")
+    amap_web_key = (self.params.get("AMapWebKey", encoding='utf8') or "").strip() if use_amap else ""
 
     try:
-      if override_data is not None:
-        cloudlog.warning(f"Using NavRouteOverride (provider={override_data.get('_provider', 'unknown')})")
-        r = override_data
-        r1 = json.loads(override_json)
-        self.params.remove("NavRouteOverride")
+      if use_amap and amap_web_key:
+        from openpilot.selfdrive.navd.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
+        cloudlog.warning("Routing via AMap v5 driving API")
+
+        # AMap doesn't natively use bearing for initial planning, and our adapter doesn't
+        # support waypoints yet (TODO: thread waypoint_coords through).
+        amap_resp = fetch_amap_route(
+          amap_web_key,
+          self.last_position.longitude,
+          self.last_position.latitude,
+          destination.longitude,
+          destination.latitude,
+        )
+
+        # Use the saved NavDestination's place_name for the route summary
+        nav_dest_json = self.params.get("NavDestination", encoding='utf8')
+        place_name = None
+        if nav_dest_json:
+          try:
+            place_name = json.loads(nav_dest_json).get("place_name")
+          except json.JSONDecodeError:
+            pass
+
+        r = convert_amap_to_mapbox(amap_resp, place_name=place_name)
+        # remove_keys() returns new objects so aliasing is safe; matches Mapbox path's intent.
+        r1 = json.loads(json.dumps(r))
       else:
         resp = requests.get(url, params=params, timeout=10)
         if resp.status_code != 200:

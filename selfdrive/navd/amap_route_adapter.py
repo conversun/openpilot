@@ -50,9 +50,12 @@ GCJ02_PI = 3.1415926535897932384626 * 3000.0 / 180.0
 # Mapbox maneuver types come from https://docs.mapbox.com/api/navigation/directions/#maneuver-types
 # Mapbox modifiers come from https://docs.mapbox.com/api/navigation/directions/#maneuver-modifiers
 #
-# Coverage based on AMap v3/v5 documented action lists; unknown actions fall back to ('turn', 'straight').
+# Coverage based on the official v5 'navi.action' (主要动作) list — see
+# https://lbs.amap.com/api/webservice/guide/api/newroute. The doc enumerates ~14 primary
+# actions; assistant_action is rendered as banner secondary text only and is NOT mapped here.
 _ACTION_MAP: dict[str, tuple[str, str]] = {
   # Primary actions (主要动作)
+  "无基本导航动作":   ("continue", "straight"),
   "左转":          ("turn", "left"),
   "右转":          ("turn", "right"),
   "直行":          ("turn", "straight"),
@@ -364,7 +367,7 @@ def fetch_amap_route(
     "origin": origin_str,
     "destination": dest_str,
     "strategy": str(strategy),
-    "show_fields": "cost,navi,tmcs",
+    "show_fields": "cost,navi,tmcs,polyline",
     # AMap accepts WGS-84 input directly when coordsys=gps is set
     "coordsys": "gps" if origin_is_wgs84 else "autonavi",
   }

@@ -166,44 +166,12 @@ def setup(app):
   @app.route("/api/navigation", methods=["POST"])
   def set_navigation():
     params.remove("NavDestination")
-    params.remove("NavRouteOverride")
 
     time.sleep(1)
 
-    destination = request.json
-
-    # When AMap routing is enabled and we have a key, pre-compute the route via AMap and
-    # hand it to navd as a NavRouteOverride. navd consumes it on read so subsequent reroutes
-    # fall back to the normal path (Mapbox or another AMap call). This keeps the route
-    # consistent with what the driver sees on CarPlay's AMap/Gaode.
-    # AMap exposes two key types that are NOT interchangeable:
-    #   - AMapWebKey:   web service key for restapi.amap.com (REST API)
-    #   - AMapKey1/2:   JS SDK key + security code for webapi.amap.com (browser)
-    # The web service REST endpoint requires the web key; using a JS key returns USERKEY_PLAT_NOMATCH.
-    use_amap = params.get_bool("UseAMapRouting")
-    amap_web_key = (params.get("AMapWebKey", encoding="utf8") or "").strip()
-    last_position_json = params.get("LastGPSPosition", encoding="utf8")
-
-    if use_amap and amap_web_key and last_position_json and destination:
-      try:
-        from openpilot.selfdrive.navd.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
-
-        last_position = json.loads(last_position_json)
-        amap_resp = fetch_amap_route(
-          amap_web_key,
-          float(last_position["longitude"]),
-          float(last_position["latitude"]),
-          float(destination["longitude"]),
-          float(destination["latitude"]),
-        )
-        mapbox_route = convert_amap_to_mapbox(amap_resp, place_name=destination.get("name") or destination.get("place_name"))
-        params.put("NavRouteOverride", json.dumps(mapbox_route))
-      except Exception as e:
-        traceback.print_exc()
-        # Don't block the destination set on AMap failures; navd will fall back to Mapbox.
-        print(f"AMap routing failed, falling back to Mapbox: {e}")
-
-    params.put("NavDestination", json.dumps(destination))
+    # navd handles AMap routing on its own (gated by UseAMapRouting + AMapWebKey).
+    # The web UI just sets the destination; navd reads it and decides which provider to use.
+    params.put("NavDestination", json.dumps(request.json))
     return {"message": "Destination set"}
 
   @app.route("/api/navigation/favorite", methods=["DELETE"])

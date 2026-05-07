@@ -314,7 +314,7 @@ class TestRealAMapResponses:
   """Smoke tests against real AMap responses captured from the user's web key.
 
   Fixtures are anonymized API responses (Beijing South Station -> Beijing Station).
-  Both v3 and v5 must round-trip cleanly into navd's expected structure.", """
+  Both v3 and v5 must round-trip cleanly into navd's expected structure."""
 
   @staticmethod
   def _load_fixture(name: str) -> dict:
