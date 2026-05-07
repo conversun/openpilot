@@ -81,7 +81,7 @@ function Root() {
   }
 
         if (routerState.errors?.root?.status === 404) {
-          return html`<h1>Not Found</h1>`
+          return html`<h1>页面未找到</h1>`
         }
 
         const match = routes.find(r => r.path === routerState.activePath)

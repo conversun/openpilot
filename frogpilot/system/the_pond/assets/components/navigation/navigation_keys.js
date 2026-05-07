@@ -86,7 +86,7 @@ export function NavKeys() {
 
   const getDeleteLabel = (kind) => {
     switch (kind) {
-      case "amap1": return "高德 Key"
+      case "amap1": return "高德密钥"
       case "amap2": return "高德安全密钥"
       case "public": return "Mapbox 公钥"
       case "secret": return "Mapbox 私钥"
@@ -95,10 +95,10 @@ export function NavKeys() {
   }
 
   const labelMap = {
-    amap1: "Key",
+    amap1: "密钥",
     amap2: "安全密钥",
-    public: "Public 密钥",
-    secret: "Secret 密钥",
+    public: "公钥",
+    secret: "私钥",
   }
 
   const api = {

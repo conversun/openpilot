@@ -67,11 +67,10 @@ function handleRouteEvents(map, clickLayerId, onRouteSelect, routes, useMetric, 
     const arrival = new Date(Date.now() + props.duration * 1000);
     const isLong = props.duration > 24 * 3600;
     const timeStr = arrival.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    const month = arrival.toLocaleString([], { month: 'long' });
+    const month = arrival.getMonth() + 1;
     const day = arrival.getDate();
     const year = arrival.getFullYear();
-    const suffix = getOrdinalSuffix(day);
-    const eta = isLong ? `${month} ${day}${suffix}, ${year}, ${timeStr}` : timeStr;
+    const eta = isLong ? `${year}年${month}月${day}日 ${timeStr}` : timeStr;
     const tooltip = document.createElement('div');
     tooltip.className = 'custom-tooltip';
     tooltip.style.whiteSpace = 'nowrap';
@@ -200,7 +199,7 @@ export function formatSecondsToAmerican(s) {
 
 export function formatMetersToMiles(m) {
   const miles = m / 1609.34;
-  return miles >= 0.1 ? `${miles.toFixed(1)} mi` : `${(miles * 5280).toFixed(0)} ft`;
+  return miles >= 0.1 ? `${miles.toFixed(1)} 英里` : `${(miles * 5280).toFixed(0)} 英尺`;
 }
 
 function congestionToColor(lvl) {

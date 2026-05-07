@@ -66,10 +66,10 @@ export function TailscaleControl() {
             disabled="${() => state.status === 'installing' || state.status === 'uninstalling'}"
           >
             ${() => {
-              if (state.status === 'installing') return 'Installing...'
-              if (state.status === 'uninstalling') return 'Uninstalling...'
-              if (state.installed) return 'Uninstall'
-              return 'Install'
+              if (state.status === 'installing') return '安装中...'
+              if (state.status === 'uninstalling') return '卸载中...'
+              if (state.installed) return '卸载'
+              return '安装'
             }}
           </button>
           <a class="tailscale-link" href="https://tailscale.com/download" target="_blank">

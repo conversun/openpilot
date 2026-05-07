@@ -33,6 +33,15 @@ const SOUND_DEFINITIONS = [
   { key: "startup", label: "启动提示音" },
 ];
 
+const TAB_LABELS = {
+  colors: "颜色",
+  distance_icons: "跟车距离图标",
+  icons: "图标",
+  sounds: "声音",
+  steering_wheel: "方向盘",
+  turn_signals: "转向灯",
+};
+
 const fileStore = {
   images: { distanceIcons: {} },
   sounds: {},
@@ -279,24 +288,24 @@ const loadDefaultTheme = async () => {
 
     if (data.images) {
       if (data.images.homeButton) {
-        state.imageFileNames.homeButton = data.theme_names.icons || "Active";
+        state.imageFileNames.homeButton = data.theme_names.icons || "已加载";
       }
       if (data.images.settingsButton) {
-        state.imageFileNames.settingsButton = data.theme_names.icons || "Active";
+        state.imageFileNames.settingsButton = data.theme_names.icons || "已加载";
       }
       if (data.images.steeringWheel) {
-        state.imageFileNames.steeringWheel = data.theme_names.steeringWheel || "Active";
+        state.imageFileNames.steeringWheel = data.theme_names.steeringWheel || "已加载";
       }
       if (data.images.turnSignal) {
-        state.imageFileNames.turnSignal = data.theme_names.turnSignals || "Active";
+        state.imageFileNames.turnSignal = data.theme_names.turnSignals || "已加载";
       }
       if (data.images.turnSignalBlindspot) {
-        state.imageFileNames.turnSignalBlindspot = data.theme_names.turnSignals || "Active";
+        state.imageFileNames.turnSignalBlindspot = data.theme_names.turnSignals || "已加载";
       }
       if (data.images.distanceIcons) {
         for (const key in data.images.distanceIcons) {
           if (data.images.distanceIcons[key]) {
-            state.imageFileNames.distanceIcons[key] = data.theme_names.distanceIcons || "Active";
+            state.imageFileNames.distanceIcons[key] = data.theme_names.distanceIcons || "已加载";
           }
         }
       }
@@ -305,7 +314,7 @@ const loadDefaultTheme = async () => {
     if (data.sounds) {
       for (const key in data.sounds) {
         if (data.sounds[key]) {
-          state.soundFileNames[key] = data.theme_names.sounds || "Active";
+          state.soundFileNames[key] = data.theme_names.sounds || "已加载";
         }
       }
     }
@@ -324,7 +333,7 @@ const loadDefaultTheme = async () => {
 
     if (data.sequentialImages && data.sequentialImages.length > 0) {
       state.sequentialImages = data.sequentialImages;
-      state.imageFileNames.turnSignal = data.theme_names.turnSignals || "Active";
+      state.imageFileNames.turnSignal = data.theme_names.turnSignals || "已加载";
     }
 
     const fetchActive = async (relPath) => {
@@ -585,7 +594,7 @@ export function ThemeMaker() {
       }
       return { ok: response.ok, result };
     } catch(e) {
-      showSnackbar(`An error occurred: ${errorMessage} (${e.message})`, "error");
+      showSnackbar(`发生错误：${errorMessage}（${e.message}）`, "error");
       return { ok: false };
     }
   };
@@ -803,7 +812,7 @@ export function ThemeMaker() {
         state.isLoadingAsset = false;
         return;
       }
-      showSnackbar(`正在下载主题“${displayName}”的 ${tab.replace('_', ' ')}...`);
+      showSnackbar(`正在下载主题“${displayName}”的 ${TAB_LABELS[tab] || tab}...`);
       const result = await pollDownloadProgress();
       if (!result.ok) {
         showSnackbar(`下载失败：${result.status}`, "error");
@@ -825,7 +834,7 @@ export function ThemeMaker() {
         const f = tabToLocalFlag[tab];
         if (f) theme[f] = true;
       }
-      showSnackbar(`已下载“${displayName}”的 ${tab.replace('_', ' ')}。`);
+      showSnackbar(`已下载“${displayName}”的 ${TAB_LABELS[tab] || tab}。`);
     } catch (e) {
       showSnackbar("下载过程中发生异常。", "error");
     } finally {
@@ -931,7 +940,7 @@ export function ThemeMaker() {
         }
       }
 
-      showSnackbar(`已从“${theme.name}”加载 ${assetType.replace("_", " ")}！`);
+      showSnackbar(`已从“${theme.name}”加载 ${TAB_LABELS[assetType] || assetType}！`);
     } catch (err) {
       console.error("Failed to load theme asset:", err);
       showSnackbar("主题资源加载失败。", "error");
@@ -1030,11 +1039,11 @@ export function ThemeMaker() {
                     <input type="file" class="file-upload-input" id="file-upload-distance-${key}" accept="image/*"
                       @change="${e => handleFileUpload(e, "image", "distanceIcons", key)}" />
                     <div class="file-upload-label">
-                      <span class="file-upload-text">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                      <span class="file-upload-text">${({traffic:"拥堵",aggressive:"激进",standard:"标准",relaxed:"宽松"})[key]}</span>
                       <span class="file-name-display">${() => state.imageFileNames.distanceIcons[key] || ''}</span>
                       <label for="file-upload-distance-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames.distanceIcons[key] ? html`
-                        <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "distanceIcons", key)}">
+                        <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", "distanceIcons", key)}">
                           <i class="bi bi-trash-fill"></i>
                         </button>
                       ` : ""}
@@ -1043,7 +1052,7 @@ export function ThemeMaker() {
               </div>
             </div>
             <div class="turn-signal-help-text">
-              <p><strong>Recommended size: 250x250</strong></p>
+              <p><strong>推荐尺寸：250x250</strong></p>
             </div>
           </section>
 
@@ -1059,7 +1068,7 @@ export function ThemeMaker() {
                       <span class="file-name-display">${() => state.imageFileNames[key] || ''}</span>
                       <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames[key] ? html`
-                        <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", key)}">
+                        <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", key)}">
                           <i class="bi bi-trash-fill"></i>
                         </button>
                       ` : ""}
@@ -1068,8 +1077,8 @@ export function ThemeMaker() {
               </div>
             </div>
             <div class="turn-signal-help-text">
-              <p><strong>Home Button: 250x250</strong></p>
-              <p><strong>Settings Button: 169x104</strong></p>
+              <p><strong>主页按钮：250x250</strong></p>
+              <p><strong>设置按钮：169x104</strong></p>
             </div>
           </section>
 
@@ -1085,7 +1094,7 @@ export function ThemeMaker() {
                       <span class="file-name-display">${() => state.soundFileNames[key] || ''}</span>
                       <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
                       ${() => state.soundFileNames[key] ? html`
-                        <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "audio", key)}">
+                        <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "audio", key)}">
                           <i class="bi bi-trash-fill"></i>
                         </button>
                       ` : ""}
@@ -1107,7 +1116,7 @@ export function ThemeMaker() {
                     <span class="file-name-display">${() => state.imageFileNames.steeringWheel || ''}</span>
                     <label for="file-upload-steeringWheel" class="file-upload-button">选择文件</label>
                     ${() => state.imageFileNames.steeringWheel ? html`
-                      <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "steeringWheel")}">
+                      <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", "steeringWheel")}">
                         <i class="bi bi-trash-fill"></i>
                       </button>
                     ` : ""}
@@ -1116,7 +1125,7 @@ export function ThemeMaker() {
               </div>
             </div>
             <div class="turn-signal-help-text">
-              <p><strong>Recommended size: 250x250</strong></p>
+              <p><strong>推荐尺寸：250x250</strong></p>
             </div>
           </section>
 
@@ -1166,7 +1175,7 @@ export function ThemeMaker() {
                     <span class="file-name-display">${() => state.imageFileNames.turnSignalBlindspot || ''}</span>
                     <label for="file-upload-turnSignalBlindspot" class="file-upload-button">选择文件</label>
                     ${() => state.imageFileNames.turnSignalBlindspot ? html`
-                      <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "turnSignalBlindspot")}">
+                      <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", "turnSignalBlindspot")}">
                         <i class="bi bi-trash-fill"></i>
                       </button>
                     ` : ""}
@@ -1182,14 +1191,14 @@ export function ThemeMaker() {
                       ${() => {
                         if (state.turnSignalType === "Sequential") {
                           if (state.imageFileNames.turnSignal) return state.imageFileNames.turnSignal;
-                          return state.sequentialImages.length > 0 ? `${state.sequentialImages.length} image(s) selected` : '';
+                          return state.sequentialImages.length > 0 ? `已选择 ${state.sequentialImages.length} 张图片` : '';
                         }
                         return state.imageFileNames.turnSignal || '';
                       }}
                     </span>
                     <label for="file-upload-turnSignal" class="file-upload-button">${() => state.turnSignalType === "Sequential" ? "选择文件" : "选择文件"}</label>
                     ${() => (state.imageFileNames.turnSignal || state.sequentialImages.length > 0) ? html`
-                      <button class="file-clear-button" title="Clear" @click="${e => onClearClick(e, "image", "turnSignal")}">
+                      <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", "turnSignal")}">
                         <i class="bi bi-trash-fill"></i>
                       </button>
                     ` : ""}
@@ -1363,7 +1372,7 @@ export function ThemeMaker() {
                   state.activeTab = tab;
                   const themesList = document.querySelector('.themes-list');
                   if (themesList) themesList.scrollTop = 0;
-                }}">${tab.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</button>
+                }}">${TAB_LABELS[tab] || tab}</button>
             `)}
           </div>
           <div class="themes-list">

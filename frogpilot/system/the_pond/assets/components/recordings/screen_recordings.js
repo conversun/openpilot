@@ -13,24 +13,18 @@ const state = reactive({
   total: 0,
 })
 
-function getOrdinalSuffix(n) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0];
+function pad2(n) {
+  return n < 10 ? "0" + n : String(n);
 }
 
 function formatScreenRecordingDate(dateString) {
   const date = new Date(dateString);
-  const month = date.toLocaleString("en-US", { month: "long" });
+  const month = date.getMonth() + 1;
   const day = date.getDate();
   const year = date.getFullYear();
-  let hour = date.getHours();
+  const hour = date.getHours();
   const minute = date.getMinutes();
-  const ampm = hour >= 12 ? "pm" : "am";
-  hour = hour % 12;
-  hour = hour ? hour : 12;
-  const minuteStr = minute < 10 ? "0" + minute : minute;
-  return `${month} ${day}${getOrdinalSuffix(day)}, ${year} - ${hour}:${minuteStr}${ampm}`;
+  return `${year}年${month}月${day}日 ${pad2(hour)}:${pad2(minute)}`;
 }
 
 
