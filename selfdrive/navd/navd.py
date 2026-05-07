@@ -24,6 +24,11 @@ from openpilot.frogpilot.common.frogpilot_variables import get_frogpilot_toggles
 REROUTE_DISTANCE = 25
 MANEUVER_TRANSITION_THRESHOLD = 10
 REROUTE_COUNTER_MIN = 3
+# Skip reroute when Kalman position uncertainty (std norm in ECEF, meters) exceeds this.
+# locationd marks status=VALID below 50m; we use a tighter 30m here so we bail out
+# during tunnel drift / multipath events well before the localizer itself does.
+# See selfdrive/locationd/locationd.cc:VALID_POS_STD.
+REROUTE_POS_STD_THRESHOLD = 30.0
 
 
 class RouteEngine:
@@ -39,6 +44,7 @@ class RouteEngine:
 
     self.gps_ok = False
     self.localizer_valid = False
+    self.position_std_norm = float("inf")
 
     self.nav_destination = None
     self.step_idx = None
@@ -101,6 +107,16 @@ class RouteEngine:
 
     self.localizer_valid = (location.status == log.LiveLocationKalman.Status.valid) and location.positionGeodetic.valid
 
+    # positionECEF.std is the only position-uncertainty field locationd actually publishes.
+    # positionGeodetic.std is hard-coded to NaN. The std list is [x, y, z] in ECEF meters;
+    # take its norm as a scalar uncertainty proxy. In a tunnel this grows over time as
+    # the Kalman dead-reckons, well before gpsOK flips False (which lags 2s after last fix).
+    pos_std = location.positionECEF.std
+    if pos_std is not None and len(pos_std) >= 3 and all(math.isfinite(s) for s in pos_std[:3]):
+      self.position_std_norm = math.sqrt(pos_std[0] ** 2 + pos_std[1] ** 2 + pos_std[2] ** 2)
+    else:
+      self.position_std_norm = float("inf")  # treat unknown as bad
+
     if self.localizer_valid:
       self.last_bearing = math.degrees(location.calibratedOrientationNED.value[2])
       self.last_position = Coordinate(location.positionGeodetic.value[0], location.positionGeodetic.value[1])
@@ -120,8 +136,11 @@ class RouteEngine:
       cloudlog.warning(f"Got new destination from NavDestination param {new_destination}")
       should_recompute = True
 
-    # Don't recompute when GPS drifts in tunnels
-    if not self.gps_ok and self.step_idx is not None:
+    # Don't recompute when GPS is unreliable. Two guards:
+    #  1) gps_ok==False — locationd has decided GPS is gone (2s after last fix)
+    #  2) position_std_norm > 30m — Kalman uncertainty too high (catches tunnel drift
+    #     and multipath at tunnel entrance/exit before gps_ok flips)
+    if self.step_idx is not None and (not self.gps_ok or self.position_std_norm > REROUTE_POS_STD_THRESHOLD):
       return
 
     if self.recompute_countdown == 0 and should_recompute:
