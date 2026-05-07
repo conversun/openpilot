@@ -169,7 +169,7 @@ function openOverlay(rec) {
         <i class="bi bi-pencil-fill action-rename-icon"></i>
       </div>
       <video controls autoplay muted>
-        <source src="/api/screen_recordings/download/${rec.filename}" type="video/mp4">
+        <source src="${`/api/screen_recordings/download/${rec.filename}`}" type="video/mp4">
       </video>
       <div class="button-row">
         <button class="close-button action-close">关闭</button>

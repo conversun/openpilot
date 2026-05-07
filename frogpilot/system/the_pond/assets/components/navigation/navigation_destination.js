@@ -801,8 +801,8 @@ function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, rena
       </p>
       ${isFavorite(s) ? html`
         <div class="favorite-actions">
-          <button class="home-favorite-button ${s.is_home ? "active" : ""}" title="设为家庭" @click="${e => { e.stopPropagation(); setHome(s); }}">🏠</button>
-          <button class="work-favorite-button ${s.is_work ? "active" : ""}" title="设为工作" @click="${e => { e.stopPropagation(); setWork(s); }}">💼</button>
+          <button class="${`home-favorite-button ${s.is_home ? "active" : ""}`}" title="设为家庭" @click="${e => { e.stopPropagation(); setHome(s); }}">🏠</button>
+          <button class="${`work-favorite-button ${s.is_work ? "active" : ""}`}" title="设为工作" @click="${e => { e.stopPropagation(); setWork(s); }}">💼</button>
           <button class="edit-favorite-button" title="重命名收藏" @click="${e => { e.stopPropagation(); renameFavorite(s); }}">✏️</button>
           <button class="remove-favorite-button" title="从收藏中移除" @click="${e => { e.stopPropagation(); removeFavorite(s); }}">🗑️</button>
         </div>

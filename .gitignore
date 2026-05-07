@@ -87,3 +87,5 @@ Pipfile
 
 .opencode
 .sisyphus/
+
+.playwright-mcp/

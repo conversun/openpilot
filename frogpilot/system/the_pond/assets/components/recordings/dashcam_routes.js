@@ -197,7 +197,7 @@ async function openOverlay(route) {
         <i class="bi bi-pencil-fill action-rename-icon"></i>
       </div>
       <video controls autoplay muted>
-        <source src="/thumbnails/${route.name}--0/preview.png" type="video/mp4">
+        <source src="${`/thumbnails/${route.name}--0/preview.png`}" type="video/mp4">
       </video>
       <div class="button-row">
         <button class="close-button action-close">关闭</button>
@@ -402,7 +402,7 @@ export function RouteRecordings() {
                     }}"
                   >
                     <div class="preserved-icon" @click="${e => togglePreserved(route, e)}">
-                      ${() => html`<i class="bi ${route.is_preserved ? "bi-heart-fill" : "bi-heart"}"></i>`}
+                      ${() => html`<i class="${`bi ${route.is_preserved ? "bi-heart-fill" : "bi-heart"}`}"></i>`}
                     </div>
                     <div class="recording-preview-container">
                       <img

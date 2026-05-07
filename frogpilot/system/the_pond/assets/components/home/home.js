@@ -8,14 +8,7 @@ function DiskUsage(disk) {
     <div class="disk">
       <p>已用 ${disk.used} / ${disk.size}</p>
       <div class="progress">
-        <div
-          class="bar"
-          style="
-            border-bottom-right-radius: ${rightRadius};
-            border-top-right-radius: ${rightRadius};
-            width: ${100 - used}%;
-          "
-        ></div>
+        <div class="bar" style="${`border-bottom-right-radius: ${rightRadius}; border-top-right-radius: ${rightRadius}; width: ${100 - used}%;`}"></div>
       </div>
     </div>
   `;

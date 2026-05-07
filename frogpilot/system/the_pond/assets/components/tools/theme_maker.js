@@ -1036,12 +1036,12 @@ export function ThemeMaker() {
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${["traffic", "aggressive", "standard", "relaxed"].map(key => html`<div>
-                    <input type="file" class="file-upload-input" id="file-upload-distance-${key}" accept="image/*"
+                    <input type="file" class="file-upload-input" id="${`file-upload-distance-${key}`}" accept="image/*"
                       @change="${e => handleFileUpload(e, "image", "distanceIcons", key)}" />
                     <div class="file-upload-label">
                       <span class="file-upload-text">${({traffic:"拥堵",aggressive:"激进",standard:"标准",relaxed:"宽松"})[key]}</span>
                       <span class="file-name-display">${() => state.imageFileNames.distanceIcons[key] || ''}</span>
-                      <label for="file-upload-distance-${key}" class="file-upload-button">选择文件</label>
+                      <label for="${`file-upload-distance-${key}`}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames.distanceIcons[key] ? html`
                         <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", "distanceIcons", key)}">
                           <i class="bi bi-trash-fill"></i>
@@ -1061,12 +1061,12 @@ export function ThemeMaker() {
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${Object.keys(ICON_LABELS).map(key => html`<div>
-                    <input type="file" class="file-upload-input" id="file-upload-${key}" accept="image/*"
+                    <input type="file" class="file-upload-input" id="${`file-upload-${key}`}" accept="image/*"
                       @change="${e => handleFileUpload(e, "image", key)}" />
                     <div class="file-upload-label">
                       <span class="file-upload-text">${ICON_LABELS[key]}</span>
                       <span class="file-name-display">${() => state.imageFileNames[key] || ''}</span>
-                      <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
+                      <label for="${`file-upload-${key}`}" class="file-upload-button">选择文件</label>
                       ${() => state.imageFileNames[key] ? html`
                         <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "image", key)}">
                           <i class="bi bi-trash-fill"></i>
@@ -1087,12 +1087,12 @@ export function ThemeMaker() {
             <div class="theme-maker-form">
               <div class="upload-section">
                 ${SOUND_DEFINITIONS.map(({ key, label }) => html`<div>
-                    <input type="file" class="file-upload-input" id="file-upload-${key}" accept="audio/*"
+                    <input type="file" class="file-upload-input" id="${`file-upload-${key}`}" accept="audio/*"
                       @change="${e => handleFileUpload(e, "audio", key)}" />
                     <div class="file-upload-label">
                       <span class="file-upload-text">${label}</span>
                       <span class="file-name-display">${() => state.soundFileNames[key] || ''}</span>
-                      <label for="file-upload-${key}" class="file-upload-button">选择文件</label>
+                      <label for="${`file-upload-${key}`}" class="file-upload-button">选择文件</label>
                       ${() => state.soundFileNames[key] ? html`
                         <button class="file-clear-button" title="清除" @click="${e => onClearClick(e, "audio", key)}">
                           <i class="bi bi-trash-fill"></i>

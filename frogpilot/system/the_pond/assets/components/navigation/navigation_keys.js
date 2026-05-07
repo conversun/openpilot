@@ -228,13 +228,13 @@ export function NavKeys() {
           const label = labelMap[kind] || kind[0].toUpperCase() + kind.slice(1).replace(/[0-9]/, d => " " + d)
 
           return html`
-            <label class="navkeys-label" for="${kind}-key">${label}</label>
+            <label class="navkeys-label" for="${`${kind}-key`}">${label}</label>
             <div class="navkeys-row">
               <input
                 autocomplete="off"
                 class="navkeys-input"
-                id="${kind}-key"
-                placeholder="${keyMeta.prefix || ""}xxxxxx..."
+                id="${`${kind}-key`}"
+                placeholder="${`${keyMeta.prefix || ""}xxxxxx...`}"
                 value="${() => state[keyMeta.saved] ? util.mask(state[keyMeta.prop]) : state[keyMeta.prop]}"
                 @keydown="${(e) => {
                   if (state[keyMeta.saved] && !state[keyMeta.edit]) {
