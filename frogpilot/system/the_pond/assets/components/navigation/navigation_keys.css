@@ -154,3 +154,55 @@
     font-size: var(--font-size-sm);
   }
 }
+
+/* Icon-only secondary action button (eye / clipboard) — same hit-target as save/delete */
+.navkeys-btn-icon {
+  background-color: transparent;
+  border: 1px solid var(--sidebar-border-color);
+  color: var(--text-color);
+}
+
+.navkeys-btn-icon:hover:not(:disabled) {
+  background-color: var(--sidebar-active-bg);
+  border-color: var(--main-fg);
+  transform: var(--hover-scale-base);
+}
+
+/* Modal that reveals the full key value with a copy button */
+.key-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.key-reveal .key-value {
+  background: var(--input-bg);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-color);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  /* CRITICAL: wrap-anywhere so 80+ char keys are fully visible on 390px viewport */
+  overflow-wrap: anywhere;
+  padding: var(--padding-sm) var(--padding-base);
+  user-select: all;
+  word-break: break-all;
+}
+
+.key-reveal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.key-reveal-actions .copy-button {
+  background: var(--main-fg);
+  border: none;
+  color: var(--text-color);
+  font-size: var(--font-size-base);
+  padding: var(--padding-xs) var(--padding-base);
+}
+
+.key-reveal-actions .copy-button.copied {
+  background: var(--success-bg);
+}

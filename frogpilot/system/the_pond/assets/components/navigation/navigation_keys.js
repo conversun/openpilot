@@ -20,6 +20,10 @@ export function NavKeys() {
 
     showDeleteModal: false,
     keyToDelete: null,
+
+    showRevealModal: false,
+    keyToReveal: null,
+    revealCopied: false,
   })
 
   let clearTimer = null
@@ -178,6 +182,25 @@ export function NavKeys() {
       state.showDeleteModal = true;
     },
 
+    revealKey: (kind) => {
+      state.keyToReveal = kind;
+      state.revealCopied = false;
+      state.showRevealModal = true;
+    },
+
+    copyRevealedKey: async () => {
+      const kind = state.keyToReveal;
+      if (!kind) return;
+      const value = state[meta[kind].prop];
+      try {
+        await navigator.clipboard.writeText(value);
+        state.revealCopied = true;
+        setTimeout(() => { state.revealCopied = false; }, 1500);
+      } catch (err) {
+        showMessage("error", "复制失败，请手动选择复制", "");
+      }
+    },
+
     delete: async () => {
       const kind = state.keyToDelete;
       if (!kind) return;
@@ -238,8 +261,15 @@ export function NavKeys() {
                 class="${() => `navkeys-btn ${state[keyMeta.saved] ? "delete" : ""}`}"
                 @click="${() => state[keyMeta.saved] ? api.confirmDelete(kind) : api.save(kind)()}"
                 disabled="${() => !state[keyMeta.saved] && !canSave(kind)}">
-                ${() => state[keyMeta.saved] ? "🗑️" : "💾"}
+                ${() => state[keyMeta.saved] ? html`<i class="bi bi-trash"></i>` : html`<i class="bi bi-floppy-fill"></i>`}
               </button>
+              ${() => state[keyMeta.saved] ? html`
+                <button class="navkeys-btn navkeys-btn-icon"
+                  title="查看完整密钥"
+                  @click="${() => api.revealKey(kind)}">
+                  <i class="bi bi-eye"></i>
+                </button>
+              ` : ""}
             </div>
           `
         })}
@@ -308,6 +338,26 @@ export function NavKeys() {
       onConfirm: api.delete,
       onCancel: () => { state.showDeleteModal = false },
       confirmText: "确认删除"
+    }) : ""}
+    ${() => state.showRevealModal ? Modal({
+      title: getDeleteLabel(state.keyToReveal),
+      message: html`
+        <div class="key-reveal">
+          <div class="key-value">${state.keyToReveal ? state[meta[state.keyToReveal].prop] : ""}</div>
+          <div class="key-reveal-actions">
+            <button class="${() => `copy-button ${state.revealCopied ? "copied" : ""}`}"
+              @click="${(e) => api.copyRevealedKey(e)}">
+              ${() => state.revealCopied
+                ? html`<i class="bi bi-check-lg"></i> 已复制`
+                : html`<i class="bi bi-clipboard"></i> 复制到剪贴板`
+              }
+            </button>
+          </div>
+        </div>
+      `,
+      onCancel: () => { state.showRevealModal = false; state.keyToReveal = null; },
+      cancelText: "关闭",
+      confirmText: null,
     }) : ""}
   `
 }
