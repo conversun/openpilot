@@ -512,7 +512,7 @@ state.amap1Key = data.amap1Key?.trim() || "";
       return;
     }
     state.loadingRoute = true;
-    let coords = null;
+    coords = null;
     try {
       // Resolve coords through the REST forward-geocode endpoint as the primary path.
       // This ensures the destination is canonical AMap web-service POI data (not just
