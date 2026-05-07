@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import sys
 import types
-from unittest.mock import MagicMock, patch
+# Per-test mocking uses pytest-mock's `mocker` fixture (repo convention).
+# Module-level stubs use plain Python helper classes — no unittest import.
 
 import pytest
 
@@ -27,6 +28,19 @@ import pytest
 
 # selfdrive.navd.navd imports cereal/swaglog/params at module level. Stub them
 # minimally so the pure helper can be imported on a dev machine without zmq.
+class _Loose:
+  """Tiny MagicMock-like helper for module-level stubs (no unittest.mock dependency).
+  Supports arbitrary attribute access (returns more _Loose), keyword-init, and being callable."""
+  def __init__(self, **kw):
+    object.__setattr__(self, "_kw", kw)
+    for k, v in kw.items():
+      object.__setattr__(self, k, v)
+  def __call__(self, *a, **kw):
+    return _Loose()
+  def __getattr__(self, name):
+    return _Loose()
+
+
 def _stub_navd_dependencies():
   if "openpilot.selfdrive.navd.helpers" in sys.modules:
     return
@@ -47,24 +61,24 @@ def _stub_navd_dependencies():
   cereal_mod.car = types.ModuleType("cereal.car")
 
   messaging_mod = types.ModuleType("cereal.messaging")
-  messaging_mod.SubMaster = MagicMock
-  messaging_mod.PubMaster = MagicMock
-  messaging_mod.new_message = MagicMock(return_value=MagicMock())
+  messaging_mod.SubMaster = _Loose
+  messaging_mod.PubMaster = _Loose
+  messaging_mod.new_message = lambda *a, **kw: _Loose()
 
   sys.modules.setdefault("cereal", cereal_mod)
   sys.modules["cereal.log"] = log_mod
   sys.modules["cereal.messaging"] = messaging_mod
 
   swaglog_mod = types.ModuleType("openpilot.common.swaglog")
-  swaglog_mod.cloudlog = MagicMock()
+  swaglog_mod.cloudlog = _Loose()
   sys.modules["openpilot.common.swaglog"] = swaglog_mod
 
   params_mod = types.ModuleType("openpilot.common.params")
-  params_mod.Params = MagicMock
+  params_mod.Params = _Loose
   sys.modules["openpilot.common.params"] = params_mod
 
   api_mod = types.ModuleType("openpilot.common.api")
-  api_mod.Api = MagicMock
+  api_mod.Api = _Loose
   sys.modules["openpilot.common.api"] = api_mod
 
   numpy_fast_mod = types.ModuleType("openpilot.common.numpy_fast")
@@ -72,11 +86,11 @@ def _stub_navd_dependencies():
   sys.modules["openpilot.common.numpy_fast"] = numpy_fast_mod
 
   realtime_mod = types.ModuleType("openpilot.common.realtime")
-  realtime_mod.Ratekeeper = MagicMock
+  realtime_mod.Ratekeeper = _Loose
   sys.modules["openpilot.common.realtime"] = realtime_mod
 
   fp_vars_mod = types.ModuleType("openpilot.frogpilot.common.frogpilot_variables")
-  fp_vars_mod.get_frogpilot_toggles = lambda: MagicMock(
+  fp_vars_mod.get_frogpilot_toggles = lambda: _Loose(
     conditional_navigation=False,
     conditional_navigation_intersections=False,
     conditional_navigation_turns=False,
@@ -86,7 +100,7 @@ def _stub_navd_dependencies():
   # numpy not stubbed: helpers/conversions/numpy_fast are stubbed below, so the
   # numpy chain is never triggered. Stubbing numpy globally poisons pytest.approx.
   conversions_mod = types.ModuleType("openpilot.common.conversions")
-  conversions_mod.Conversions = MagicMock(KPH_TO_MS=0.27778, MPH_TO_MS=0.44704)
+  conversions_mod.Conversions = _Loose(KPH_TO_MS=0.27778, MPH_TO_MS=0.44704)
   sys.modules["openpilot.common.conversions"] = conversions_mod
 
   helpers_mod = types.ModuleType("openpilot.selfdrive.navd.helpers")
@@ -218,14 +232,12 @@ def fake_navd_module():
 class TestRouteEngineReroute:
   """Tier B: instantiate the actual RouteEngine and exercise calculate_route + recompute."""
 
-  def _make_engine(self, navd_module):
-    """Build a RouteEngine with mocked sm/pm/Params."""
-    sm = MagicMock()
-    pm = MagicMock()
+  def _make_engine(self, mocker, navd_module):
+    """Build a RouteEngine with mocker-provided fakes for sm/pm/Params."""
     engine = navd_module.RouteEngine.__new__(navd_module.RouteEngine)
-    engine.sm = sm
-    engine.pm = pm
-    engine.params = MagicMock()
+    engine.sm = mocker.MagicMock()
+    engine.pm = mocker.MagicMock()
+    engine.params = mocker.MagicMock()
     engine.params.get_bool.return_value = False
     engine.params.get.return_value = None
     engine.last_position = navd_module.Coordinate(22.61, 114.03)
@@ -249,17 +261,17 @@ class TestRouteEngineReroute:
     engine.nav_speed_limit = 0
     engine.stop_coord = []
     engine.stop_signal = []
-    engine.frogpilot_toggles = MagicMock(
+    engine.frogpilot_toggles = mocker.MagicMock(
       conditional_navigation=False,
       conditional_navigation_intersections=False,
       conditional_navigation_turns=False,
     )
     return engine
 
-  def test_calculate_route_amap_path_calls_adapter_with_current_position(self, fake_navd_module):
+  def test_calculate_route_amap_path_calls_adapter_with_current_position(self, mocker, fake_navd_module):
     """When UseAMapRouting=1 and AMapWebKey is set, calculate_route must call fetch_amap_route
     with self.last_position (NOT a stale coord). This is the reroute-uses-fresh-coords contract."""
-    engine = self._make_engine(fake_navd_module)
+    engine = self._make_engine(mocker, fake_navd_module)
     engine.params.get_bool.return_value = True  # UseAMapRouting
 
     def fake_param_get(key, encoding=None):
@@ -292,10 +304,10 @@ class TestRouteEngineReroute:
 
     destination = fake_navd_module.Coordinate(22.64, 113.82)
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch), \
-         patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get"), \
-         patch("builtins.open"):
-      engine.calculate_route(destination)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get")
+    mocker.patch("builtins.open")
+    engine.calculate_route(destination)
 
     assert len(captured_calls) == 1
     call = captured_calls[0]
@@ -308,11 +320,11 @@ class TestRouteEngineReroute:
     assert engine.step_idx == 0
     assert engine.route is not None
 
-  def test_amap_failure_preserves_existing_route_and_does_not_advance_destination(self, fake_navd_module):
+  def test_amap_failure_preserves_existing_route_and_does_not_advance_destination(self, mocker, fake_navd_module):
     """The stuck-route bug fix: if AMap fails mid-trip while user changes destination,
     self.route stays as the OLD route AND self.nav_destination stays as the OLD destination,
     so next tick's destination-changed check fires another retry."""
-    engine = self._make_engine(fake_navd_module)
+    engine = self._make_engine(mocker, fake_navd_module)
     engine.params.get_bool.return_value = True
     engine.params.get.return_value = None
     engine.params.get.side_effect = lambda key, encoding=None: {
@@ -334,10 +346,10 @@ class TestRouteEngineReroute:
     def fake_fetch_fails(*args, **kwargs):
       raise ValueError("AMap returned error status: CUQPS_HAS_EXCEEDED_THE_LIMIT")
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch_fails), \
-         patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get"), \
-         patch("builtins.open"):
-      engine.calculate_route(new_destination)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch_fails)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get")
+    mocker.patch("builtins.open")
+    engine.calculate_route(new_destination)
 
     # The fix: nav_destination must NOT advance to new_destination since the fetch failed
     assert engine.nav_destination == old_destination, (
@@ -348,12 +360,12 @@ class TestRouteEngineReroute:
     assert engine.route is old_route, "existing route must survive transient failure"
     assert engine.step_idx == 0, "step_idx must not be reset"
 
-  def test_recompute_route_off_route_drives_fresh_amap_call(self, fake_navd_module):
+  def test_recompute_route_off_route_drives_fresh_amap_call(self, mocker, fake_navd_module):
     """True end-to-end reroute: REAL distance logic detects off-route condition,
     REAL recompute_counter accrues across ticks, REAL recompute_route() fires the
     AMap call. We do NOT patch should_recompute or the counter — only the I/O
     boundary (fetch_amap_route, coordinate_from_param) is mocked."""
-    engine = self._make_engine(fake_navd_module)
+    engine = self._make_engine(mocker, fake_navd_module)
     engine.params.get_bool.return_value = True
     engine.params.get.side_effect = lambda key, encoding=None: {
       "AMapWebKey": "test_key", "AMapRouteStrategy": "32",
@@ -407,16 +419,14 @@ class TestRouteEngineReroute:
       "need >25m for should_recompute to trigger"
     )
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch), \
-         patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get"), \
-         patch("openpilot.selfdrive.navd.navd.coordinate_from_param", side_effect=stub_coord_from_param), \
-         patch("builtins.open"):
-      # Tick recompute_route() enough times for reroute_counter to exceed REROUTE_COUNTER_MIN.
-      # Each tick should accrue +1 to reroute_counter via REAL should_recompute() distance math.
-      for _ in range(REROUTE_COUNTER_MIN + 2):
-        engine.recompute_route()
-        if captured_origins:
-          break
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get")
+    mocker.patch("openpilot.selfdrive.navd.navd.coordinate_from_param", side_effect=stub_coord_from_param)
+    mocker.patch("builtins.open")
+    for _ in range(REROUTE_COUNTER_MIN + 2):
+      engine.recompute_route()
+      if captured_origins:
+        break
 
     assert len(captured_origins) == 1, (
       f"recompute_route should fire exactly one AMap call after "

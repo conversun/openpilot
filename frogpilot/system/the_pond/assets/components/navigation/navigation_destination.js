@@ -512,20 +512,20 @@ state.amap1Key = data.amap1Key?.trim() || "";
       return;
     }
     state.loadingRoute = true;
+    let coords = null;
     try {
-      const loc = sugg.location;
-      if (loc && typeof loc === 'object') {
-        const lng = loc.lng || loc[0];
-        const lat = loc.lat || loc[1];
+      // Resolve coords through the REST forward-geocode endpoint as the primary path.
+      // This ensures the destination is canonical AMap web-service POI data (not just
+      // the JS AutoComplete tip cache) and surfaces backend errors uniformly.
+      coords = await getCoordinatesFromSearch(label);
+      if (coords) {
+        coords = gcj02ToWgs84(coords[0], coords[1]);
+      } else if (sugg.location && typeof sugg.location === 'object') {
+        // Fallback: AutoComplete tip already carries a location (rare but possible).
+        const lng = sugg.location.lng || sugg.location[0];
+        const lat = sugg.location.lat || sugg.location[1];
         if (lng && lat) {
           coords = gcj02ToWgs84(parseFloat(lng), parseFloat(lat));
-        }
-      }
-      
-      if (!coords) {
-        coords = await getCoordinatesFromSearch(label);
-        if (coords) {
-           coords = gcj02ToWgs84(coords[0], coords[1]);
         }
       }
 
@@ -617,7 +617,7 @@ state.amap1Key = data.amap1Key?.trim() || "";
                 <div class="keys-required-widget">
                   <div class="keys-required-title">需要导航密钥</div>
                   <p class="keys-required-text">使用导航功能前，必须设置高德 API Key 和安全密钥。</p>
-                  <a href="/navigation_keys" class="keys-required-button">前往“密钥管理”</a>
+                  <a href="/manage_navigation_keys" class="keys-required-button">前往“密钥管理”</a>
                 </div>
               </section>
             `

@@ -15,7 +15,7 @@ selfdrive/navd/navd.py. If navd's logic is refactored, update this file.
 from __future__ import annotations
 
 import math
-from unittest.mock import MagicMock, patch
+# All mocking goes through pytest-mock's `mocker` fixture (per repo convention).
 
 import pytest
 
@@ -125,7 +125,7 @@ class TestRerouteDecisionLogic:
 
 class TestRerouteCallsAmapWithFreshCoords:
 
-  def test_amap_called_with_current_position_not_origin(self):
+  def test_amap_called_with_current_position_not_origin(self, mocker):
     """When user deviates and reroute fires, fetch_amap_route must use CURRENT GPS, not original origin."""
     original_origin = (114.0296, 22.6098)
     deviation_point = (114.0500, 22.6300)
@@ -136,38 +136,36 @@ class TestRerouteCallsAmapWithFreshCoords:
     def fake_get(url, params=None, timeout=None):
       lng, lat = params["origin"].split(",")
       captured.append((float(lng), float(lat)))
-      mock = MagicMock()
+      mock = mocker.MagicMock()
       mock.status_code = 200
       mock.json.return_value = _amap_response([(float(lng), float(lat)), destination])
       mock.raise_for_status.return_value = None
       return mock
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get):
-      # Initial route fetch (from original origin)
-      fetch_amap_route("k", *original_origin, *destination)
-      # Reroute fetch (from deviation point) — simulating navd calling with self.last_position
-      fetch_amap_route("k", *deviation_point, *destination)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get)
+    fetch_amap_route("k", *original_origin, *destination)
+    fetch_amap_route("k", *deviation_point, *destination)
 
     assert len(captured) == 2
     assert captured[0] == (114.0296, 22.6098)
     assert captured[1] == (114.05, 22.63)
     assert captured[0] != captured[1], "reroute must use fresh coords"
 
-  def test_amap_strategy_param_propagates_per_call(self):
+  def test_amap_strategy_param_propagates_per_call(self, mocker):
     """Each fetch_amap_route call uses the strategy passed to it (no caching)."""
     captured = []
 
     def fake_get(url, params=None, timeout=None):
       captured.append(params["strategy"])
-      mock = MagicMock()
+      mock = mocker.MagicMock()
       mock.status_code = 200
       mock.json.return_value = _amap_response([(114.0, 22.6), (114.1, 22.7)])
       mock.raise_for_status.return_value = None
       return mock
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get):
-      fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7, strategy=32)
-      fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7, strategy=45)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get)
+    fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7, strategy=32)
+    fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7, strategy=45)
 
     assert captured == ["32", "45"]
 
@@ -220,32 +218,30 @@ class TestExponentialBackoff:
       backoff = min(6, backoff + 1)
     assert countdowns == [1, 2, 4, 8, 16, 32, 64, 64, 64, 64]
 
-  def test_qps_failure_burst_throttled_by_backoff(self):
+  def test_qps_failure_burst_throttled_by_backoff(self, mocker):
     """If AMap returns CUQPS for 5 consecutive reroute attempts, backoff caps the retry rate."""
     fail_responses = []
 
     def fake_get(url, params=None, timeout=None):
-      mock = MagicMock()
+      mock = mocker.MagicMock()
       mock.status_code = 200
       mock.json.return_value = {"status": "0", "info": "CUQPS_HAS_EXCEEDED_THE_LIMIT"}
       mock.raise_for_status.return_value = None
       fail_responses.append(mock)
       return mock
 
-    with patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get):
-      backoff = 0
-      attempts = 0
-      for _ in range(20):  # simulate 20 navd ticks
-        if backoff == 0 or attempts == 0:
-          # would fire fetch
-          raw = fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7)
-          attempts += 1
-          # convert raises ValueError on status=0
-          with pytest.raises(ValueError):
-            convert_amap_to_mapbox(raw)
-          backoff = min(6, backoff + 1)
-        else:
-          backoff = max(0, backoff - 1)
+    mocker.patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get", side_effect=fake_get)
+    backoff = 0
+    attempts = 0
+    for _ in range(20):
+      if backoff == 0 or attempts == 0:
+        raw = fetch_amap_route("k", 114.0, 22.6, 114.1, 22.7)
+        attempts += 1
+        with pytest.raises(ValueError):
+          convert_amap_to_mapbox(raw)
+        backoff = min(6, backoff + 1)
+      else:
+        backoff = max(0, backoff - 1)
 
     # Without backoff we'd hit AMap 20 times. With backoff we hit fewer, even on failure storm.
     assert attempts < 20, "exponential backoff must throttle attempts"
