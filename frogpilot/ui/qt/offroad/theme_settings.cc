@@ -1,8 +1,5 @@
 #include "frogpilot/ui/qt/offroad/theme_settings.h"
 
-#include <QCoreApplication>
-#include <QHash>
-
 bool isUserCreatedTheme(const QString &themeName) {
   return themeName.endsWith("-user_created");
 }
@@ -19,30 +16,6 @@ void updateAssetParam(const QString &assetParam, Params &params, const QString &
   assets.sort();
 
   params.put(assetParam.toStdString(), assets.join(",").toStdString());
-}
-
-static QString translateThemeProgress(const QString &progress) {
-  static const QHash<QString, const char*> map = {
-    {"Downloading...",           QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Downloading...")},
-    {"Unpacking theme...",        QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Unpacking theme...")},
-    {"Verifying authenticity...", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Verifying authenticity...")},
-    {"Downloaded!",              QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Downloaded!")},
-    {"GitHub and GitLab are offline...", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "GitHub and GitLab are offline...")},
-    {"Download invalid...",       QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Download invalid...")},
-    {"Download cancelled...",     QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Download cancelled...")},
-    {"Download failed...",        QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Download failed...")},
-    {"Failed: Connection dropped", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Connection dropped")},
-    {"Failed: Server error",      QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Server error")},
-    {"Failed: Network request error. Check connection", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Network request error. Check connection")},
-    {"Failed: Download timed out", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Download timed out")},
-    {"Failed: Unexpected error",  QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Unexpected error")},
-  };
-  if (progress.startsWith("Failed: Server error (") && progress.endsWith(")")) {
-    QString statusCode = progress.mid(QString("Failed: Server error (").size(), progress.size() - QString("Failed: Server error (").size() - 1);
-    return QCoreApplication::translate("FrogPilotThemesPanel", QT_TRANSLATE_NOOP("FrogPilotThemesPanel", "Failed: Server error (%1)")).arg(statusCode);
-  }
-  auto it = map.find(progress);
-  return it != map.end() ? QCoreApplication::translate("FrogPilotThemesPanel", it.value()) : progress;
 }
 
 void deleteThemeAsset(QDir &directory, const QString &subFolder, const QString &assetParam, const QString &themeToDelete, Params &params) {
@@ -94,6 +67,7 @@ void deleteThemeAsset(QDir &directory, const QString &subFolder, const QString &
 
 void downloadThemeAsset(const QString &input, const std::string &paramKey, const QString &assetParam, Params &params, Params &params_memory) {
   QString output = input;
+  output.replace(" - by: ", "~");
   int tilde = output.indexOf("~");
   if (tilde >= 0) {
     output = output.left(tilde).toLower() + "~" + output.mid(tilde + 1);
@@ -167,7 +141,7 @@ QStringList getThemeList(const bool &randomThemes, const QDir &themePacksDirecto
     if (userCreated) {
       displayName = parts.join(" ");
     } else {
-      displayName = (parts.size() <= 1 || useFiles) ? parts.join(" ") : QString("%1 (%2)").arg(parts[0], parts.mid(1).join(" "));
+      displayName = (parts.size() <= 1 || useFiles || !baseName.contains("-")) ? parts.join(" ") : QString("%1 (%2)").arg(parts[0], parts.mid(1).join(" "));
     }
 
     if (userCreated) {
@@ -593,7 +567,7 @@ FrogPilotThemesPanel::FrogPilotThemesPanel(FrogPilotSettingsWindow *parent) : Fr
       manageWheelIconsButton->setValue(getThemeName(param.toStdString(), params));
       themeToggle = manageWheelIconsButton;
     } else if (param == "DownloadStatusLabel") {
-      downloadStatusLabel = new LabelControl(title, "Idle");
+      downloadStatusLabel = new LabelControl(title, tr("Idle"));
       themeToggle = downloadStatusLabel;
     } else if (param == "StartupAlert") {
       FrogPilotButtonsControl *startupAlertButton = new FrogPilotButtonsControl(title, desc, icon, {tr("STOCK"), tr("FROGPILOT"), tr("CUSTOM"), tr("CLEAR")}, true);
@@ -626,9 +600,12 @@ FrogPilotThemesPanel::FrogPilotThemesPanel(FrogPilotSettingsWindow *parent) : Fr
           params.put("StartupMessageTop", frogpilotTop.toStdString());
           params.put("StartupMessageBottom", frogpilotBottom.toStdString());
         } else if (id == 2) {
+          QString currentTop = QString::fromStdString(params.get("StartupMessageTop"));
           QString newTop = InputDialog::getText(tr("Enter the text for the top half"), this, tr("Characters: 0/%1").arg(maxLengthTop), false, -1, currentTop, maxLengthTop).trimmed();
           if (!newTop.isEmpty()) {
             params.put("StartupMessageTop", newTop.toStdString());
+
+            QString currentBottom = QString::fromStdString(params.get("StartupMessageBottom"));
             QString newBottom = InputDialog::getText(tr("Enter the text for the bottom half"), this, tr("Characters: 0/%1").arg(maxLengthBottom), false, -1, currentBottom, maxLengthBottom).trimmed();
             if (!newBottom.isEmpty()) {
               params.put("StartupMessageBottom", newBottom.toStdString());
@@ -739,7 +716,6 @@ void FrogPilotThemesPanel::showEvent(QShowEvent *event) {
   wheelsDownloaded = params.get("DownloadableWheels").empty();
 
   frogpilotToggleLevels = parent->frogpilotToggleLevels;
-  tuningLevel = parent->tuningLevel;
 
   if (params.getBool("RandomThemes")) {
     manageCustomColorsButton->setValue("");
@@ -775,8 +751,16 @@ void FrogPilotThemesPanel::updateState(const UIState &s, const FrogPilotUIState 
     QString progress = QString::fromStdString(params_memory.get("ThemeDownloadProgress"));
     bool downloadFailed = progress.contains(QRegularExpression("cancelled|exists|failed|offline", QRegularExpression::CaseInsensitiveOption));
 
-    if (progress != "Downloading...") {
-      downloadStatusLabel->setText(translateThemeProgress(progress));
+   if (progress != "Downloading...") {
+      static const QMap<QString, QString> progressTranslations = {
+        {"Unpacking theme...", tr("Unpacking theme...")},
+        {"Downloaded!", tr("Downloaded!")},
+        {"Download cancelled...", tr("Download cancelled...")},
+        {"Download failed...", tr("Download failed...")},
+        {"Repository unavailable", tr("Repository unavailable")},
+        {"GitHub and GitLab are offline...", tr("GitHub and GitLab are offline...")}
+      };
+      downloadStatusLabel->setText(progressTranslations.value(progress, tr("Idle")));
     }
 
     if (progress == "Downloaded!" || downloadFailed) {
@@ -854,7 +838,7 @@ void FrogPilotThemesPanel::updateToggles() {
       continue;
     }
 
-    bool setVisible = tuningLevel >= frogpilotToggleLevels[key].toDouble();
+    bool setVisible = parent->tuningLevel >= frogpilotToggleLevels[key].toDouble();
 
     if (key == "CustomDistanceIcons") {
       setVisible &= params.getBool("QOLVisuals") && params.getBool("OnroadDistanceButton");

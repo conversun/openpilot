@@ -63,7 +63,7 @@ FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPi
   QObject::connect(removeMapsButton, &ButtonControl::clicked, [this] {
     if (FrogPilotConfirmationDialog::yesorno(tr("Delete all downloaded maps?"), this)) {
       std::thread([this] {
-        mapsSize->setText("0 MB");
+        mapsSize->setText(tr("0 MB"));
 
         mapsFolderPath.removeRecursively();
       }).detach();
@@ -220,10 +220,10 @@ void FrogPilotMapsPanel::cancelDownload() {
 
   downloadMapsButton->setEnabled(false);
 
-  downloadETA->setText(tr("Cancelling..."));
-  downloadMapsButton->setText(tr("CANCELLED"));
-  downloadStatus->setText(tr("Cancelling..."));
-  downloadTimeElapsed->setText(tr("Cancelling..."));
+  downloadETA->setText(tr("Calculating..."));
+  downloadMapsButton->setText(tr("CANCEL"));
+  downloadStatus->setText(tr("Calculating..."));
+  downloadTimeElapsed->setText(tr("Calculating..."));
 
   params.remove("OSMDownloadProgress");
   params_memory.remove("OSMDownloadLocations");

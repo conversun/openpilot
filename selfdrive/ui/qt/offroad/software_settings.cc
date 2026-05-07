@@ -4,9 +4,7 @@
 #include <cmath>
 #include <string>
 
-#include <QCoreApplication>
 #include <QDebug>
-#include <QHash>
 #include <QLabel>
 
 #include "common/params.h"
@@ -16,16 +14,6 @@
 #include "selfdrive/ui/qt/widgets/controls.h"
 #include "selfdrive/ui/qt/widgets/input.h"
 #include "system/hardware/hw.h"
-
-static QString translateUpdaterState(const QString &state) {
-  static const QHash<QString, const char*> map = {
-    {"downloading...",      QT_TRANSLATE_NOOP("SoftwarePanel", "downloading...")},
-    {"finalizing update...", QT_TRANSLATE_NOOP("SoftwarePanel", "finalizing update...")},
-    {"checking...",         QT_TRANSLATE_NOOP("SoftwarePanel", "checking...")},
-  };
-  auto it = map.find(state);
-  return it != map.end() ? QCoreApplication::translate("SoftwarePanel", it.value()) : state;
-}
 
 
 void SoftwarePanel::checkForUpdates() {
@@ -72,8 +60,12 @@ SoftwarePanel::SoftwarePanel(QWidget* parent) : ListWidget(parent) {
   connect(targetBranchBtn, &ButtonControl::clicked, [=]() {
     auto current = params.get("GitBranch");
     QStringList branches = QString::fromStdString(params.get("UpdaterAvailableBranches")).split(",");
-    if (!frogpilotUIState()->frogpilot_toggles.value("frogs_go_moo").toBool()) {
-      branches.removeAll("FrogPilot-Development");
+    if (!frogpilotUIState()->frogpilot_scene.frogpilot_toggles.value("frogs_go_moo").toBool()) {
+      for (int i = branches.size() - 1; i >= 0; --i) {
+        if (branches[i].startsWith("FrogPilot-Development", Qt::CaseInsensitive)) {
+          branches.removeAt(i);
+        }
+      }
       branches.removeAll("FrogPilot-Vetting");
       branches.removeAll("MAKE-PRS-HERE");
     }
@@ -179,7 +171,18 @@ void SoftwarePanel::updateLabels() {
   bool failed = std::atoi(params.get("UpdateFailedCount").c_str()) > 0;
   if (updater_state != "idle") {
     downloadBtn->setEnabled(false);
-    downloadBtn->setValue(translateUpdaterState(updater_state));
+    QString stateText = updater_state;
+    if (updater_state == "downloading...") {
+      stateText = tr("downloading…");
+    } else if (updater_state == "checking...") {
+      stateText = tr("checking…");
+    } else if (updater_state == "waiting for vehicle to go offroad...") {
+      stateText = tr("waiting for vehicle to go offroad...");
+    } else if (updater_state == "finalizing update...") {
+      stateText = tr("finalizing update...");
+    }
+
+    downloadBtn->setValue(stateText);
     frogpilot_scene.downloading_update = true;
   } else {
     frogpilot_scene.downloading_update = false;

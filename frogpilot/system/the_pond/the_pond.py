@@ -31,16 +31,10 @@ from openpilot.system.version import get_build_metadata
 from panda import Panda
 
 from openpilot.frogpilot.assets.theme_manager import HOLIDAY_THEME_PATH, THEME_COMPONENT_PARAMS
-from openpilot.frogpilot.common.frogpilot_utilities import delete_file, get_lock_status, run_cmd, extract_tar
-from openpilot.frogpilot.common.frogpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, THEME_SAVE_PATH,\
+from openpilot.frogpilot.common.frogpilot_utilities import delete_file, get_frogpilot_api_info, get_lock_status, is_url_pingable, run_cmd, extract_tar
+from openpilot.frogpilot.common.frogpilot_variables import ACTIVE_THEME_PATH, ERROR_LOGS_PATH, EXCLUDED_KEYS, FROGPILOT_API, RESOURCES_REPO, SCREEN_RECORDINGS_PATH, THEME_SAVE_PATH,\
                                                            frogpilot_default_params, params, params_memory, update_frogpilot_toggles
 from openpilot.frogpilot.system.the_pond import utilities
-
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-
-GITLAB_API = "https://gitlab.com/api/v4"
-GITLAB_SUBMISSIONS_PROJECT_ID = "71992109"
-GITLAB_TOKEN = os.environ.get("GITLAB_TOKEN", "")
 
 FOOTAGE_PATHS = [
   Paths.log_root(HD=True, raw=True),
@@ -49,10 +43,10 @@ FOOTAGE_PATHS = [
 ]
 
 KEYS = {
-  "amap1": ("amap1", "", "AMapKey1", "高德地图密钥 #1", 32),
-  "amap2": ("amap2", "", "AMapKey2", "高德地图密钥 #2", 32),
-  "public": ("public", "pk.", "MapboxPublicKey", "公共密钥", 80),
-  "secret": ("secret", "sk.", "MapboxSecretKey", "私有密钥", 80),
+  "amap1": ("amap1", "", "AMapKey1", "Amap key #1", 39),
+  "amap2": ("amap2", "", "AMapKey2", "Amap key #2", 39),
+  "public": ("public", "pk.", "MapboxPublicKey", "Public key", 80),
+  "secret": ("secret", "sk.", "MapboxSecretKey", "Secret key", 80),
 }
 
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
@@ -90,7 +84,7 @@ def setup(app):
       if lock_status == 0:
         break
 
-    return {"message": "车门已锁定！"}
+    return {"message": "Doors locked!"}
 
   @app.route("/api/doors/unlock", methods=["POST"])
   def unlock_doors():
@@ -109,7 +103,7 @@ def setup(app):
       if lock_status != 0:
         break
 
-    return {"message": "车门已解锁！"}
+    return {"message": "Doors unlocked!"}
 
   @app.route("/api/error_logs", methods=["GET"])
   def get_error_logs():
@@ -125,12 +119,12 @@ def setup(app):
   def delete_all_error_logs():
     for f in os.listdir(ERROR_LOGS_PATH):
       delete_file(os.path.join(ERROR_LOGS_PATH, f))
-    return {"message": "所有错误日志已删除！"}, 200
+    return {"message": "All error logs deleted!"}, 200
 
   @app.route("/api/error_logs/<filename>", methods=["DELETE"])
   def delete_error_log(filename):
     delete_file(os.path.join(ERROR_LOGS_PATH, filename))
-    return {"message": "错误日志已删除！"}
+    return {"message": "Error log deleted!"}
 
   @app.route("/api/error_logs/<filename>", methods=["GET"])
   def get_error_log(filename):
@@ -140,13 +134,13 @@ def setup(app):
   @app.route("/api/navigation", methods=["DELETE"])
   def clear_navigation():
     params.remove("NavDestination")
-    return {"message": "目的地已清除"}
+    return {"message": "Destination cleared"}
 
   @app.route("/api/navigation", methods=["GET"])
   def navigation():
     last_position = json.loads(
       params.get("LastGPSPosition", encoding="utf8") or
-      "{\"latitude\": 22.5431, \"longitude\": 114.0579, \"altitude\": 0.0}"
+      "{\"latitude\": 51.276824158421331, \"longitude\": 30.221928335547232, \"altitude\": 111.0}"
     )
 
     return {
@@ -170,7 +164,7 @@ def setup(app):
     time.sleep(1)
 
     params.put("NavDestination", json.dumps(request.json))
-    return {"message": "目的地已设置"}
+    return {"message": "Destination set"}
 
   @app.route("/api/navigation/favorite", methods=["DELETE"])
   def remove_favorite_destination():
@@ -192,7 +186,7 @@ def setup(app):
       ]
 
     params.put("FavoriteDestinations", json.dumps(favorites))
-    return jsonify(message="已从收藏夹移除目的地！")
+    return jsonify(message="Destination removed from favorites!")
 
   @app.route("/api/navigation/favorite", methods=["GET"])
   def list_favorite_destinations():
@@ -220,7 +214,7 @@ def setup(app):
       existing.append(new_fav)
 
     params.put("FavoriteDestinations", json.dumps(existing))
-    return {"message": "目的地已加入收藏夹！"}
+    return {"message": "Destination added to favorites!"}
 
   @app.route("/api/navigation/favorite/rename", methods=["POST"])
   def rename_favorite_destination():
@@ -232,7 +226,7 @@ def setup(app):
     is_work = data.get("is_work")
 
     if not fid and not route_id_to_rename:
-      return jsonify({"error": "缺少 id 或 routeId"}), 400
+      return jsonify({"error": "Missing id or routeId"}), 400
 
     existing_favorites = json.loads(params.get("FavoriteDestinations", encoding="utf8") or "[]")
 
@@ -267,16 +261,16 @@ def setup(app):
         break
 
     if not found:
-      return jsonify({"error": "未找到收藏项"}), 404
+      return jsonify({"error": "Favorite not found"}), 404
 
     params.put("FavoriteDestinations", json.dumps(existing_favorites))
-    return jsonify(message="收藏项已更新！")
+    return jsonify(message="Favorite updated successfully!")
 
   @app.route("/api/navigation_key", methods=["DELETE"])
   def delete_navigation_key():
     meta = KEYS.get(request.args.get("type"))
     params.remove(meta[2])
-    return jsonify(message=f"{meta[3]} 已删除！")
+    return jsonify(message=f"{meta[3]} deleted successfully!")
 
   @app.route("/api/navigation_key", methods=["POST"])
   def set_navigation_keys():
@@ -290,15 +284,15 @@ def setup(app):
 
       full = raw if raw.startswith(meta[1]) else meta[1] + raw
       if len(full) < meta[4]:
-        return jsonify(error=f"{meta[3]} 无效或过短…"), 400
+        return jsonify(error=f"{meta[3]} is invalid or too short..."), 400
 
       params.put(meta[2], full)
       saved.append(meta[3])
 
     if not saved:
-      return jsonify(error="没有需要更新的内容…"), 400
+      return jsonify(error="Nothing to update..."), 400
 
-    return jsonify(message=f"{'、'.join(saved)} 已保存！")
+    return jsonify(message=f"{', '.join(saved)} saved successfully!")
 
   @app.route("/api/params", methods=["GET"])
   def get_param():
@@ -357,7 +351,7 @@ def setup(app):
       for segment in os.listdir(footage_path):
         if segment.startswith(name):
           delete_file(os.path.join(footage_path, segment))
-    return {"message": "路线已删除！"}, 200
+    return {"message": "Route deleted!"}, 200
 
   @app.route("/api/routes/delete_all", methods=["DELETE"])
   def delete_all_routes():
@@ -374,7 +368,7 @@ def setup(app):
             if segment.startswith(route_name):
               delete_file(os.path.join(footage_path, segment))
 
-    return {"message": "所有路线已删除！"}, 200
+    return {"message": "All routes deleted!"}, 200
 
   @app.route("/api/routes/<name>/preserve", methods=["POST"])
   def preserve_route(name):
@@ -387,15 +381,15 @@ def setup(app):
             preserved_routes += 1
 
     if preserved_routes >= PRESERVE_COUNT:
-      return {"error": f"已达到最多 {PRESERVE_COUNT} 条保留路线…"}, 400
+      return {"error": f"Maximum of {PRESERVE_COUNT} preserved routes reached..."}, 400
 
     for footage_path in FOOTAGE_PATHS:
       route_path = os.path.join(footage_path, f"{name}--0")
       if os.path.exists(route_path):
         os.setxattr(route_path, PRESERVE_ATTR_NAME, PRESERVE_ATTR_VALUE)
-        return {"message": "路线已保留！"}, 200
+        return {"message": "Route preserved!!"}, 200
 
-    return {"error": "未找到路线"}, 404
+    return {"error": "Route not found"}, 404
 
   @app.route("/api/routes/<name>/preserve", methods=["DELETE"])
   def un_preserve_route(name):
@@ -403,8 +397,8 @@ def setup(app):
       route_path = os.path.join(footage_path, f"{name}--0")
       if PRESERVE_ATTR_NAME in os.listxattr(route_path):
         os.removexattr(route_path, PRESERVE_ATTR_NAME)
-        return {"message": "路线已取消保留！"}, 200
-    return {"error": "未找到路线"}, 404
+        return {"message": "Route unpreserved!"}, 200
+    return {"error": "Route not found"}, 404
 
   @app.route("/video/<name>/combined", methods=["GET"])
   def get_combined_route_video(name):
@@ -425,12 +419,12 @@ def setup(app):
         ]
 
         if not input_files:
-          return {"error": "未找到视频文件"}, 404
+          return {"error": "No video files found"}, 404
 
         mp4_file = utilities.ffmpeg_concat_segments_to_mp4(input_files, cache_key=f"{name}-{camera}")
         return send_file(mp4_file, mimetype="video/mp4")
 
-    return {"error": "未找到路线"}, 404
+    return {"error": "Route not found"}, 404
 
   @app.route("/api/routes/<name>", methods=["GET"])
   def get_route(name):
@@ -450,7 +444,7 @@ def setup(app):
           "date": utilities.get_route_start_time(footage_path),
           "available_cameras": utilities.get_available_cameras(base_path),
         }, 200
-    return {"error": "未找到路线"}, 404
+    return {"error": "Route not found"}, 404
 
   @app.route("/api/routes/clear_name", methods=["POST"])
   def clear_route_name():
@@ -458,7 +452,7 @@ def setup(app):
     route_name = data.get("name")
 
     if not route_name:
-      return jsonify({"error": "缺少路线名称"}), 400
+      return jsonify({"error": "Missing route name"}), 400
 
     cleared = False
     original_timestamp = None
@@ -486,9 +480,9 @@ def setup(app):
           original_timestamp = route_timestamp_dt.isoformat() if route_timestamp_dt else None
 
     if cleared:
-      return jsonify({"message": "路线名称已清除！", "timestamp": original_timestamp}), 200
+      return jsonify({"message": "Route name cleared successfully!", "timestamp": original_timestamp}), 200
     else:
-      return jsonify({"error": "未找到路线或没有可清除的自定义名称"}), 404
+      return jsonify({"error": "Route not found or no custom name to clear"}), 404
 
   @app.route("/api/routes/rename", methods=["POST"])
   def rename_route():
@@ -497,7 +491,7 @@ def setup(app):
     new_name_raw = data.get("new")
 
     if not old_name or not new_name_raw:
-      return jsonify({"error": "缺少旧名称或新名称"}), 400
+      return jsonify({"error": "Missing old or new name"}), 400
 
     new_name = secure_filename(new_name_raw)
     renamed = False
@@ -528,18 +522,18 @@ def setup(app):
             os.utime(new_name_file_path, None)
           renamed = True
         except OSError as e:
-          return jsonify({"error": f"创建新名称文件失败：{e}"}), 500
+          return jsonify({"error": f"Error creating new name file: {e}"}), 500
 
     if renamed:
-      return jsonify({"message": "路线已重命名！"}), 200
+      return jsonify({"message": "Route renamed successfully!"}), 200
     else:
-      return jsonify({"error": "未找到路线"}), 404
+      return jsonify({"error": "Route not found"}), 404
 
   @app.route("/api/screen_recordings/delete/<path:filename>", methods=["DELETE"])
   def delete_screen_recording(filename):
     mp4_path = SCREEN_RECORDINGS_PATH / filename
     if not mp4_path.exists():
-      return {"error": "未找到文件"}, 404
+      return {"error": "File not found"}, 404
 
     delete_file(str(mp4_path))
 
@@ -548,7 +542,7 @@ def setup(app):
       if thumb.exists():
         delete_file(str(thumb))
 
-    return {"message": "已删除"}, 200
+    return {"message": "Deleted"}, 200
 
   @app.route("/api/screen_recordings/delete_all", methods=["DELETE"])
   def delete_all_screen_recordings():
@@ -559,7 +553,7 @@ def setup(app):
         thumb = os.path.join(SCREEN_RECORDINGS_PATH, filename.replace(".mp4", ext))
         if os.path.exists(thumb):
           delete_file(thumb)
-    return {"message": "所有屏幕录制已删除！"}, 200
+    return {"message": "All screen recordings deleted!"}, 200
 
   @app.route("/api/screen_recordings/download/<path:filename>", methods=["GET"])
   def download_screen_recording(filename):
@@ -604,17 +598,17 @@ def setup(app):
     new_raw = data.get("new")
 
     if not old or not new_raw:
-      return {"error": "缺少文件名"}, 400
+      return {"error": "Missing filenames"}, 400
 
     new = secure_filename(new_raw)
     old_path = SCREEN_RECORDINGS_PATH / old
     new_path = SCREEN_RECORDINGS_PATH / new
 
     if not old_path.exists():
-      return {"error": "未找到原始文件"}, 404
+      return {"error": "Original file not found"}, 404
 
     if new_path.exists():
-      return {"error": "目标文件已存在"}, 400
+      return {"error": "Target file already exists"}, 400
 
     old_path.rename(new_path)
     for extension in (".png", ".gif"):
@@ -624,7 +618,7 @@ def setup(app):
       if old_thumb.exists():
         old_thumb.rename(new_thumb)
 
-    return {"message": "已重命名"}, 200
+    return {"message": "Renamed"}, 200
 
   @app.route("/api/speed_limits", methods=["GET"])
   def speed_limits():
@@ -644,13 +638,13 @@ def setup(app):
 
     short_branch = build_metadata.channel
     if short_branch == "FrogPilot-Development":
-      env = "开发版"
+      env = "Development"
     elif build_metadata.release_channel:
-      env = "正式版"
+      env = "Release"
     elif short_branch == "FrogPilot-Testing":
-      env = "测试版"
+      env = "Testing"
     elif build_metadata.tested_channel:
-      env = "预发布版"
+      env = "Staging"
     else:
       env = short_branch
 
@@ -670,7 +664,7 @@ def setup(app):
         "buildEnvironment": env,
         "commitHash": build_metadata.openpilot.git_commit,
         "forkMaintainer": utilities.get_repo_owner(build_metadata.openpilot.git_normalized_origin),
-        "updateAvailable": "是" if params.get_bool("UpdaterFetchAvailable") else "否",
+        "updateAvailable": "Yes" if params.get_bool("UpdaterFetchAvailable") else "No",
         "versionDate": utilities.format_git_date(build_metadata.openpilot.git_commit_date),
       },
     }
@@ -766,7 +760,7 @@ def setup(app):
         break
 
     return jsonify({
-      "message": "Tailscale 设置已开始，请在浏览器中完成认证。",
+      "message": "Tailscale setup started. Please authenticate in your browser.",
       "auth_url": auth_url
     }), 200
 
@@ -802,14 +796,14 @@ def setup(app):
     if os.path.exists(base):
       run_cmd(["sudo", "rm", "-rf", base], "Removed tailscale dir.", "Failed to remove tailscale dir.")
 
-    return jsonify({"message": "Tailscale 已卸载！"}), 200
+    return jsonify({"message": "Tailscale uninstalled!"}), 200
 
   @app.route("/api/themes", methods=["POST"])
   def save_theme_route():
     theme_path, error = utilities.create_theme(request.form, request.files)
     if error:
       return jsonify({"message": error}), 400
-    return jsonify({"message": f'主题“{request.form.get("themeName")}”已保存！'}), 200
+    return jsonify({"message": f'Theme "{request.form.get("themeName")}" saved!'}), 200
 
   @app.route("/api/themes/download_asset", methods=["POST"])
   def start_download_asset():
@@ -817,19 +811,19 @@ def setup(app):
     raw_component = (data.get("component") or "").strip()
     display_name = (data.get("name") or "").strip()
     if not raw_component or not display_name:
-      return jsonify({"error": "缺少组件或名称"}), 400
+      return jsonify({"error": "Missing component or name"}), 400
 
     component = "steering_wheels" if raw_component == "steering_wheel" else ("signals" if raw_component == "turn_signals" else raw_component)
     mem_key = THEME_COMPONENT_PARAMS.get(component)
     if not mem_key:
-      return jsonify({"error": "未知组件"}), 400
+      return jsonify({"error": "Unknown component"}), 400
 
     slug = display_name.lower().replace("(", "").replace(")", "").replace(" ", "_")
 
     params_memory.put(mem_key, slug)
     params_memory.put("ThemeDownloadProgress", "Downloading...")
 
-    return jsonify({"message": "下载已开始", "component": component, "param": mem_key, "slug": slug}), 200
+    return jsonify({"message": "Download started", "component": component, "param": mem_key, "slug": slug}), 200
 
   @app.route("/api/themes/apply", methods=["POST"])
   def apply_theme():
@@ -906,7 +900,7 @@ def setup(app):
     params_memory.put_bool("UseActiveTheme", True)
 
     update_frogpilot_toggles()
-    return {"message": "主题已应用！"}, 200
+    return {"message": "Theme applied successfully!"}, 200
 
   @app.route("/api/themes/asset/<path:theme>/<path:asset_path>")
   def get_theme_asset(theme, asset_path):
@@ -923,7 +917,7 @@ def setup(app):
       file_path = base_dir / asset_path
 
     if not file_path.exists():
-      return "未找到文件", 404
+      return "File not found", 404
 
     return send_file(file_path, as_attachment=False)
 
@@ -933,34 +927,34 @@ def setup(app):
     component = (request.args.get("component") or "").strip()
 
     if theme_type == "holiday":
-      return jsonify({"message": "无法删除节日主题。"}), 403
+      return jsonify({"message": "Cannot delete holiday themes."}), 403
 
     if theme_type == "steering_wheel":
       wheel_path = THEME_SAVE_PATH / "steering_wheels" / theme_path_str
       if wheel_path.exists():
         delete_file(wheel_path)
-        return jsonify({"message": f'方向盘“{utilities.normalize_theme_name(wheel_path.stem)}”已删除！'}), 200
-      return jsonify({"message": "未找到方向盘…"}), 404
+        return jsonify({"message": f'Steering wheel "{utilities.normalize_theme_name(wheel_path.stem)}" deleted!'}), 200
+      return jsonify({"message": "Steering wheel not found..."}), 404
 
     theme_path = THEME_SAVE_PATH / "theme_packs" / theme_path_str
     if not theme_path.is_dir():
-      return jsonify({"message": "未找到主题…"}), 404
+      return jsonify({"message": "Theme not found..."}), 404
 
     if component:
       allowed = {"colors", "distance_icons", "icons", "sounds", "signals"}
       if component not in allowed:
-        return jsonify({"message": "未知组件…"}), 400
+        return jsonify({"message": "Unknown component..."}), 400
 
       target = theme_path / component
       if not target.exists():
-        return jsonify({"message": f'主题中未找到组件“{component}”…'}), 404
+        return jsonify({"message": f'Component "{component}" not found in theme...'}), 404
 
       delete_file(target)
 
-      return jsonify({"message": f'已从“{utilities.normalize_theme_name(theme_path.name)}”移除 {component.replace("_", " ")}！'}), 200
+      return jsonify({"message": f'Removed {component.replace("_", " ")} from "{utilities.normalize_theme_name(theme_path.name)}"!'}), 200
 
     delete_file(theme_path)
-    return jsonify({"message": f'主题“{utilities.normalize_theme_name(theme_path.name)}”已删除！'}), 200
+    return jsonify({"message": f'Theme "{utilities.normalize_theme_name(theme_path.name)}" deleted!'}), 200
 
   @app.route("/api/themes/default", methods=["GET"])
   def get_default_theme():
@@ -969,19 +963,19 @@ def setup(app):
       "images": {},
       "sounds": {},
       "turnSignalLength": 100,
-      "turnSignalType": "单张图片",
+      "turnSignalType": "Single Image",
       "sequentialImages": [],
       "theme_names": {}
     }
 
     if not params.get_bool("PersonalizeOpenpilot"):
       theme_data["theme_names"] = {
-        "colors": "原厂",
-        "distanceIcons": "原厂",
-        "icons": "原厂",
-        "sounds": "原厂",
-        "turnSignals": "原厂",
-        "steeringWheel": "原厂"
+        "colors": "Stock",
+        "distanceIcons": "Stock",
+        "icons": "Stock",
+        "sounds": "Stock",
+        "turnSignals": "Stock",
+        "steeringWheel": "Stock"
       }
     else:
       theme_param_map = {
@@ -1007,9 +1001,9 @@ def setup(app):
       sequential_files = sorted([f.name for f in signals_dir.glob("turn_signal_*.png") if "blindspot" not in f.name.lower()])
       if sequential_files:
         theme_data["sequentialImages"] = sequential_files
-        theme_data["turnSignalType"] = "序列帧"
+        theme_data["turnSignalType"] = "Sequential"
 
-      theme_data["turnSignalStyle"] = "传统"
+      theme_data["turnSignalStyle"] = "Traditional"
       theme_data["turnSignalLength"] = 100
 
       for file in os.listdir(signals_dir):
@@ -1139,8 +1133,8 @@ def setup(app):
       "images": {},
       "sounds": {},
       "sequentialImages": [],
-      "turnSignalType": "单张图片",
-      "turnSignalStyle": "静态",
+      "turnSignalType": "Single Image",
+      "turnSignalStyle": "Static",
       "turnSignalLength": 100
     }
 
@@ -1181,9 +1175,9 @@ def setup(app):
       sequential_files = sorted([f.name for f in signals_dir.glob("turn_signal_*.png") if "blindspot" not in f.name.lower()])
       if sequential_files:
         response_data["sequentialImages"] = sequential_files
-        response_data["turnSignalType"] = "序列帧"
+        response_data["turnSignalType"] = "Sequential"
 
-      response_data["turnSignalStyle"] = "传统"
+      response_data["turnSignalStyle"] = "Traditional"
       response_data["turnSignalLength"] = 100
 
       for file in os.listdir(signals_dir):
@@ -1251,13 +1245,13 @@ def setup(app):
 
   @app.route("/api/themes/submit", methods=["POST"])
   def submit_theme():
-    if not GITLAB_TOKEN:
-      return jsonify({"error": "缺少 GitLab token"}), 500
+    if not is_url_pingable(FROGPILOT_API):
+      return jsonify({"error": "FrogPilot API is not reachable"}), 503
 
     try:
       theme_name = request.form.get("themeName")
       if not theme_name:
-        return jsonify({"error": "缺少主题名称"}), 400
+        return jsonify({"error": "Missing theme name"}), 400
 
       discord_username = request.form.get("discordUsername") or "Unknown"
 
@@ -1269,11 +1263,18 @@ def setup(app):
       combined_name = f"{safe_theme_name}~{discord_username}"
       timestamp = int(time.time())
 
-      def gitlab_post(project_id, endpoint, payload):
-        url = f"{GITLAB_API}/projects/{project_id}/{endpoint}"
-        resp = requests.post(url, headers={"PRIVATE-TOKEN": GITLAB_TOKEN}, json=payload)
+      def gitlab_post(commit_payload):
+        api_token, build_metadata, device_type, dongle_id = get_frogpilot_api_info()
+        payload = {
+          "api_token": api_token,
+          "build_metadata": build_metadata,
+          "device": device_type,
+          "frogpilot_dongle_id": dongle_id,
+          **commit_payload,
+        }
+        resp = requests.post(f"{FROGPILOT_API}/gitlab/commit", json=payload, headers={"Content-Type": "application/json", "User-Agent": "frogpilot-api/1.0"}, timeout=60)
         if resp.status_code not in (200, 201):
-          raise RuntimeError(f"GitLab API error {resp.status_code}: {resp.text}")
+          raise RuntimeError(f"GitLab commit error {resp.status_code}: {resp.text}")
         return resp.json()
 
       def encode_file_base64(path):
@@ -1281,24 +1282,27 @@ def setup(app):
           return base64.b64encode(f.read()).decode("utf-8")
 
       def send_discord_notification(username, theme_name, asset_types):
-        if not DISCORD_WEBHOOK_URL:
+        if not is_url_pingable(FROGPILOT_API):
           return
 
-        message = (
-          f"🎨 **New Theme Submission**\n"
-          f"User: `{username}`\n"
-          f"Theme: `{theme_name}`\n"
-          f"Assets: {', '.join(asset_types)}\n"
-          f"[View Submissions Repo](https://gitlab.com/{RESOURCES_REPO}-Submissions)\n"
-          f"<@263565721336807424>"
-        )
-        payload = {"content": message}
+        api_token, build_metadata, device_type, dongle_id = get_frogpilot_api_info()
+
+        payload = {
+          "api_token": api_token,
+          "asset_types": asset_types,
+          "build_metadata": build_metadata,
+          "device": device_type,
+          "frogpilot_dongle_id": dongle_id,
+          "theme_name": theme_name,
+          "username": username,
+        }
+
         try:
-          resp = requests.post(DISCORD_WEBHOOK_URL, json=payload)
-          if resp.status_code not in (200, 204):
-            print(f"Discord notification failed: {resp.status_code} {resp.text}")
-        except Exception as exception:
-          print(f"Error sending Discord message: {exception}")
+          resp = requests.post(f"{FROGPILOT_API}/discord/theme", json=payload, headers={"Content-Type": "application/json", "User-Agent": "frogpilot-api/1.0"}, timeout=30)
+          resp.raise_for_status()
+          print("Successfully sent theme submission notification!")
+        except requests.exceptions.RequestException as exception:
+          print(f"Error sending theme notification: {exception}")
 
       asset_types = []
       submission_urls = {}
@@ -1321,7 +1325,7 @@ def setup(app):
           "commit_message": f"Added Distance Icons: {combined_name}",
           "actions": actions
         }
-        gitlab_post(GITLAB_SUBMISSIONS_PROJECT_ID, "repository/commits", commit_payload)
+        gitlab_post(commit_payload)
         asset_types.append("Distance Icons")
         submission_urls["distance_icons"] = f"https://gitlab.com/{RESOURCES_REPO}-Submissions/-/tree/Distance-Icons"
 
@@ -1345,7 +1349,7 @@ def setup(app):
           "commit_message": f"Added Theme: {combined_name}",
           "actions": theme_actions
         }
-        gitlab_post(GITLAB_SUBMISSIONS_PROJECT_ID, "repository/commits", commit_payload)
+        gitlab_post(commit_payload)
         asset_types.append("Theme")
         submission_urls["theme"] = f"https://gitlab.com/{RESOURCES_REPO}-Submissions/-/tree/Themes"
 
@@ -1368,17 +1372,17 @@ def setup(app):
           "commit_message": f"Added Steering Wheel: {combined_name}",
           "actions": actions
         }
-        gitlab_post(GITLAB_SUBMISSIONS_PROJECT_ID, "repository/commits", commit_payload)
+        gitlab_post(commit_payload)
         asset_types.append("Steering Wheel")
         submission_urls["steering_wheel"] = f"https://gitlab.com/{RESOURCES_REPO}-Submissions/-/tree/Steering-Wheels"
 
       if not submission_urls:
-        return jsonify({"error": "未提供有效的主题数据或方向盘文件"}), 400
+        return jsonify({"error": "No valid theme data or steering wheel file provided"}), 400
 
       send_discord_notification(discord_username, theme_name, asset_types)
 
       return jsonify({
-        "message": "提交成功！",
+        "message": "Submission successful!",
         "branches": submission_urls
       }), 200
 
@@ -1403,16 +1407,16 @@ def setup(app):
     log_path.write_text(result.stdout, encoding="utf-8")
 
     run_cmd(["tmux", "delete-buffer"], "Deleted tmux buffer.", "Failed to delete tmux buffer.")
-    return jsonify({"message": "控制台日志已捕获！", "log_file": log_filename}), 200
+    return jsonify({"message": "Captured console log successfully!", "log_file": log_filename}), 200
 
   @app.route("/api/tmux_log/delete/<filename>", methods=["DELETE"])
   def delete_tmux_log(filename):
     file_path = TMUX_LOGS_PATH / filename
     if file_path.exists():
       delete_file(file_path)
-      return jsonify({"message": f"{filename} 已删除！"}), 200
+      return jsonify({"message": f"{filename} deleted!"}), 200
 
-    return jsonify({"error": "未找到文件"}), 404
+    return jsonify({"error": "File not found"}), 404
 
   @app.route("/api/tmux_log/delete_all", methods=["DELETE"])
   def delete_all_tmux_logs():
@@ -1421,7 +1425,7 @@ def setup(app):
       delete_file(TMUX_LOGS_PATH)
 
     TMUX_LOGS_PATH.mkdir(parents=True, exist_ok=True)
-    return jsonify({"message": "所有 tmux 日志已删除！"}), 200
+    return jsonify({"message": "All tmux logs deleted!"}), 200
 
   @app.route("/api/tmux_log/download/<path:filename>", methods=["GET"])
   def download_tmux_log(filename):
@@ -1456,14 +1460,14 @@ def setup(app):
     new_path = TMUX_LOGS_PATH / new_safe
 
     if not old_path.exists():
-      return jsonify({"error": "未找到原始文件"}), 404
+      return jsonify({"error": "Original file not found"}), 404
 
     if new_path.exists():
-      return jsonify({"error": "目标文件已存在"}), 400
+      return jsonify({"error": "Target file already exists"}), 400
 
     old_path.rename(new_path)
 
-    return jsonify({"message": f"已将 {old} 重命名为 {new_safe}！"}), 200
+    return jsonify({"message": f"Renamed {old} to {new_safe}!"}), 200
 
   @app.route("/api/tsk_available", methods=["GET"])
   def tsk_available():
@@ -1495,11 +1499,11 @@ def setup(app):
   def set_secoc_key():
     data = request.get_json()
     if not data or "value" not in data:
-      return jsonify({"error": "缺少密钥值"}), 400
+      return jsonify({"error": "Missing key value"}), 400
 
     value = data["value"]
     if not isinstance(value, str):
-      return jsonify({"error": "密钥值必须是字符串"}), 400
+      return jsonify({"error": "Key value must be a string"}), 400
 
     params.put("SecOCKey", value)
 
@@ -1532,7 +1536,7 @@ def setup(app):
   def restore_toggle_values():
     request_data = request.get_json()
     if not request_data or "data" not in request_data:
-      return jsonify({"success": False, "message": "请求中缺少 data。"}), 400
+      return jsonify({"success": False, "message": "Missing 'data' in request."}), 400
 
     allowed_keys = {key for key, _, _, _ in frogpilot_default_params if key not in EXCLUDED_KEYS}
 
@@ -1542,7 +1546,7 @@ def setup(app):
         params.put(key, value)
 
     update_frogpilot_toggles()
-    return jsonify({"success": True, "message": "开关已恢复！"})
+    return jsonify({"success": True, "message": "Toggles restored!"})
 
   @app.route("/api/toggles/reset_default", methods=["POST"])
   def reset_toggle_values():
@@ -1567,7 +1571,7 @@ def setup(app):
     for footage_path in FOOTAGE_PATHS:
       if os.path.exists(os.path.join(footage_path, file_path)):
         return send_from_directory(footage_path, file_path, as_attachment=True)
-    return {"error": "未找到缩略图"}, 404
+    return {"error": "Thumbnail not found"}, 404
 
   @app.route("/video/<path>", methods=["GET"])
   def get_video(path):
@@ -1598,7 +1602,7 @@ def setup(app):
 
           if byte_start >= file_size:
             file_handle.close()
-            return Response("请求范围无法满足", 416)
+            return Response("Requested Range Not Satisfiable", 416)
 
           byte_end = max(byte_start, byte_end)
 
@@ -1630,7 +1634,7 @@ def setup(app):
 
         file_handle.close()
         return response
-    return {"error": "未找到视频"}, 404
+    return {"error": "Video not found"}, 404
 
 def main():
   app = Flask(__name__, static_folder="assets", static_url_path="/assets")
@@ -1640,7 +1644,7 @@ def main():
   port = 8083 if debug else 8082
 
   if debug:
-    print("The Pond 未在 comma 设备上运行，正在启用调试模式")
+    print("\"The Pond\" is not running on a comma device, enabling debug mode")
 
   app.secret_key = secrets.token_hex(32)
   app.run(host="0.0.0.0", port=port, debug=debug)

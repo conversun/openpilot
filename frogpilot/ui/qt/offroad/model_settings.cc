@@ -1,8 +1,5 @@
 #include "frogpilot/ui/qt/offroad/model_settings.h"
 
-#include <QCoreApplication>
-#include <QHash>
-
 bool hasAllTinygradFiles(const QDir &modelDir, const QString &modelKey) {
   QStringList tinygradSuffixes = {
     "_driving_policy_metadata.pkl",
@@ -25,41 +22,6 @@ QString normalizeModelKey(QString key) {
     key.chop(QString("_default").size());
   }
   return key;
-}
-
-static QString translateModelProgress(const QString &progress) {
-  static const QHash<QString, const char*> map = {
-    {"Downloading...",       QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Downloading...")},
-    {"Installing...",        QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Installing...")},
-    {"Verifying authenticity...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Verifying authenticity...")},
-    {"All models downloaded!", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "All models downloaded!")},
-    {"Downloaded!",          QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Downloaded!")},
-    {"Updated!",             QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Updated!")},
-    {"GitHub and GitLab are offline...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "GitHub and GitLab are offline...")},
-    {"Download invalid...",   QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Download invalid...")},
-    {"Download cancelled...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Download cancelled...")},
-    {"Download failed...",    QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Download failed...")},
-    {"Verification failed...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Verification failed...")},
-    {"Missing size metadata...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Missing size metadata...")},
-    {"Tinygrad update cancelled...", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Tinygrad update cancelled...")},
-    {"Verification Failed",   QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Verification Failed")},
-    {"Update Failed",         QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Update Failed")},
-    {"Failed: Connection dropped", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Connection dropped")},
-    {"Failed: Server error",  QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Server error")},
-    {"Failed: Network request error. Check connection", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Network request error. Check connection")},
-    {"Failed: Download timed out", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Download timed out")},
-    {"Failed: Unexpected error", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Unexpected error")},
-  };
-  if (progress.startsWith("Downloading \"") && progress.endsWith("\"...")) {
-    QString modelName = progress.mid(QString("Downloading \"").size(), progress.size() - QString("Downloading \"").size() - QString("\"...").size());
-    return QCoreApplication::translate("FrogPilotModelPanel", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Downloading \"%1\"...")).arg(modelName);
-  }
-  if (progress.startsWith("Failed: Server error (") && progress.endsWith(")")) {
-    QString statusCode = progress.mid(QString("Failed: Server error (").size(), progress.size() - QString("Failed: Server error (").size() - 1);
-    return QCoreApplication::translate("FrogPilotModelPanel", QT_TRANSLATE_NOOP("FrogPilotModelPanel", "Failed: Server error (%1)")).arg(statusCode);
-  }
-  auto it = map.find(progress);
-  return it != map.end() ? QCoreApplication::translate("FrogPilotModelPanel", it.value()) : progress;
 }
 
 FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
@@ -402,9 +364,6 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
   FrogPilotUIState &fs = *frogpilotUIState();
   UIState &s = *uiState();
 
-  frogpilotToggleLevels = parent->frogpilotToggleLevels;
-  tuningLevel = parent->tuningLevel;
-
   allModelsDownloading = params_memory.getBool("DownloadAllModels");
   modelDownloading = !params_memory.get("ModelDownloadProgress").empty();
   tinygradUpdate = params.getBool("TinygradUpdateAvailable");
@@ -484,8 +443,26 @@ void FrogPilotModelPanel::updateState(const UIState &s, const FrogPilotUIState &
     QString progress = QString::fromStdString(params_memory.get("ModelDownloadProgress"));
     bool downloadFailed = progress.contains(QRegularExpression("cancelled|exists|failed|missing|offline", QRegularExpression::CaseInsensitiveOption));
 
-    if (progress != "Downloading...") {
-      downloadModelButton->setValue(translateModelProgress(progress));
+     {
+      QString translatedProgress;
+      if (progress == "Downloading...") {
+        translatedProgress = tr("Downloading...");
+      } else if (progress == "Downloaded!") {
+        translatedProgress = tr("Downloaded!");
+      } else if (progress == "All models downloaded!") {
+        translatedProgress = tr("All models downloaded!");
+      } else if (progress.contains("cancelled", Qt::CaseInsensitive)) {
+        translatedProgress = tr("Download cancelled...");
+      } else if (progress.contains("failed", Qt::CaseInsensitive)) {
+        translatedProgress = tr("Download failed...");
+      } else if (progress.contains("offline", Qt::CaseInsensitive)) {
+        translatedProgress = tr("GitHub and GitLab are offline...");
+      } else if (progress == "Repository unavailable") {
+        translatedProgress = tr("Repository unavailable");
+      } else {
+        translatedProgress = progress;
+      }
+      downloadModelButton->setValue(translatedProgress);
     }
 
     if (progress == "All models downloaded!" || progress == "Downloaded!" && !allModelsDownloading || downloadFailed) {
@@ -521,8 +498,26 @@ void FrogPilotModelPanel::updateState(const UIState &s, const FrogPilotUIState &
     QString progress = QString::fromStdString(params_memory.get("ModelDownloadProgress"));
     bool downloadFailed = progress.contains(QRegularExpression("cancelled|exists|failed|missing|offline", QRegularExpression::CaseInsensitiveOption));
 
-    if (progress != "Downloading...") {
-      updateTinygradButton->setValue(translateModelProgress(progress));
+    {
+      QString translatedProgress;
+      if (progress == "Downloading...") {
+        translatedProgress = tr("Downloading...");
+      } else if (progress == "Downloaded!") {
+        translatedProgress = tr("Downloaded!");
+      } else if (progress == "All models downloaded!") {
+        translatedProgress = tr("All models downloaded!");
+      } else if (progress.contains("cancelled", Qt::CaseInsensitive)) {
+        translatedProgress = tr("Download cancelled...");
+      } else if (progress.contains("failed", Qt::CaseInsensitive)) {
+        translatedProgress = tr("Download failed...");
+      } else if (progress.contains("offline", Qt::CaseInsensitive)) {
+        translatedProgress = tr("GitHub and GitLab are offline...");
+      } else if (progress == "Repository unavailable") {
+        translatedProgress = tr("Repository unavailable");
+      } else {
+        translatedProgress = progress;
+      }
+      updateTinygradButton->setValue(translatedProgress);
     }
 
     if (progress == "Updated!" && updatingTinygrad || downloadFailed) {
@@ -595,7 +590,7 @@ void FrogPilotModelPanel::updateModelLabels(FrogPilotListWidget *labelsList) {
 
 void FrogPilotModelPanel::updateToggles() {
   for (auto &[key, toggle] : toggles) {
-    bool setVisible = tuningLevel >= frogpilotToggleLevels[key].toDouble();
+    bool setVisible = parent->tuningLevel >= parent->frogpilotToggleLevels[key].toDouble();
 
     if (key == "ManageBlacklistedModels" || key == "ManageScores") {
       setVisible &= params.getBool("ModelRandomizer");
