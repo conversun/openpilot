@@ -161,7 +161,7 @@ export function NavKeys() {
       if (input) {
         input.blur()
         input.value = ""
-        requestAnimationFrame(() => { input.value = util.mask(state[keyMeta.prop]) })
+        requestAnimationFrame(() => { input.value = state[keyMeta.prop] })
       }
 
       if (group === "mapbox") {
@@ -235,7 +235,7 @@ export function NavKeys() {
                 class="navkeys-input"
                 id="${`${kind}-key`}"
                 placeholder="${`${keyMeta.prefix || ""}xxxxxx...`}"
-                value="${() => state[keyMeta.saved] ? util.mask(state[keyMeta.prop]) : state[keyMeta.prop]}"
+                value="${() => state[keyMeta.prop]}"
                 @keydown="${(e) => {
                   if (state[keyMeta.saved] && !state[keyMeta.edit]) {
                     state[keyMeta.edit] = true
