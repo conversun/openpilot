@@ -172,14 +172,34 @@ class RouteEngine:
 
     coords_str = ';'.join([f'{lon},{lat}' for lon, lat in coords])
     url = self.mapbox_host + '/directions/v5/mapbox/driving-traffic/' + coords_str
-    try:
-      resp = requests.get(url, params=params, timeout=10)
-      if resp.status_code != 200:
-        cloudlog.event("API request failed", status_code=resp.status_code, text=resp.text, error=True)
-      resp.raise_for_status()
+    # NavRouteOverride lets external sources (e.g. The Pond's AMap adapter) bypass the
+    # Mapbox API entirely. Useful for users behind GFW or who need their route to match
+    # whatever app (CarPlay AMap/Gaode) the driver is following. The override is a Mapbox-shaped
+    # JSON document; we consume it on read so reroutes follow the normal Mapbox path.
+    override_json = self.params.get("NavRouteOverride", encoding='utf8')
+    override_data = None  # populated only when NavRouteOverride parses to a Mapbox-shaped dict with 'routes'
+    if override_json:
+      try:
+        parsed = json.loads(override_json)
+        if isinstance(parsed, dict) and parsed.get('routes'):
+          override_data = parsed
+      except json.JSONDecodeError:
+        cloudlog.exception("NavRouteOverride parse failed; falling back to Mapbox")
 
-      r = resp.json()
-      r1 = resp.json()
+    try:
+      if override_data is not None:
+        cloudlog.warning(f"Using NavRouteOverride (provider={override_data.get('_provider', 'unknown')})")
+        r = override_data
+        r1 = json.loads(override_json)
+        self.params.remove("NavRouteOverride")
+      else:
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code != 200:
+          cloudlog.event("API request failed", status_code=resp.status_code, text=resp.text, error=True)
+        resp.raise_for_status()
+
+        r = resp.json()
+        r1 = resp.json()
       chosen_route = r['routes'][0]
 
       # Function to remove specified keys recursively unnessary for display

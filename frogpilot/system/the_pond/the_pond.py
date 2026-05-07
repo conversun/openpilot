@@ -43,10 +43,14 @@ FOOTAGE_PATHS = [
 ]
 
 KEYS = {
-  "amap1": ("amap1", "", "AMapKey1", "Amap key #1", 39),
-  "amap2": ("amap2", "", "AMapKey2", "Amap key #2", 39),
-  "public": ("public", "pk.", "MapboxPublicKey", "Public key", 80),
-  "secret": ("secret", "sk.", "MapboxSecretKey", "Secret key", 80),
+  # AMap (高德) exposes two key types that are not interchangeable:
+  #   - JS Key (+ JS Secret) → browser SDK at webapi.amap.com (POI search, map render)
+  #   - Web Key             → REST API at restapi.amap.com (route planning)
+  "amap1":    ("amap1",    "", "AMapKey1",   "高德 JS Key",    32),
+  "amap2":    ("amap2",    "", "AMapKey2",   "高德 JS Secret", 32),
+  "amap_web": ("amap_web", "", "AMapWebKey", "高德 Web Key",   32),
+  "public":   ("public",   "pk.", "MapboxPublicKey", "Public key", 80),
+  "secret":   ("secret",   "sk.", "MapboxSecretKey", "Secret key", 80),
 }
 
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
@@ -146,6 +150,8 @@ def setup(app):
     return {
       "amap1Key": params.get("AMapKey1", encoding="utf8") or "",
       "amap2Key": params.get("AMapKey2", encoding="utf8") or "",
+      "amapWebKey": params.get("AMapWebKey", encoding="utf8") or "",
+      "useAMapRouting": params.get_bool("UseAMapRouting"),
       "destination": params.get("NavDestination", encoding="utf8") or "",
       "isMetric": params.get_bool("IsMetric"),
       "lastPosition": {
@@ -160,10 +166,44 @@ def setup(app):
   @app.route("/api/navigation", methods=["POST"])
   def set_navigation():
     params.remove("NavDestination")
+    params.remove("NavRouteOverride")
 
     time.sleep(1)
 
-    params.put("NavDestination", json.dumps(request.json))
+    destination = request.json
+
+    # When AMap routing is enabled and we have a key, pre-compute the route via AMap and
+    # hand it to navd as a NavRouteOverride. navd consumes it on read so subsequent reroutes
+    # fall back to the normal path (Mapbox or another AMap call). This keeps the route
+    # consistent with what the driver sees on CarPlay's AMap/Gaode.
+    # AMap exposes two key types that are NOT interchangeable:
+    #   - AMapWebKey:   web service key for restapi.amap.com (REST API)
+    #   - AMapKey1/2:   JS SDK key + security code for webapi.amap.com (browser)
+    # The web service REST endpoint requires the web key; using a JS key returns USERKEY_PLAT_NOMATCH.
+    use_amap = params.get_bool("UseAMapRouting")
+    amap_web_key = (params.get("AMapWebKey", encoding="utf8") or "").strip()
+    last_position_json = params.get("LastGPSPosition", encoding="utf8")
+
+    if use_amap and amap_web_key and last_position_json and destination:
+      try:
+        from openpilot.selfdrive.navd.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
+
+        last_position = json.loads(last_position_json)
+        amap_resp = fetch_amap_route(
+          amap_web_key,
+          float(last_position["longitude"]),
+          float(last_position["latitude"]),
+          float(destination["longitude"]),
+          float(destination["latitude"]),
+        )
+        mapbox_route = convert_amap_to_mapbox(amap_resp, place_name=destination.get("name") or destination.get("place_name"))
+        params.put("NavRouteOverride", json.dumps(mapbox_route))
+      except Exception as e:
+        traceback.print_exc()
+        # Don't block the destination set on AMap failures; navd will fall back to Mapbox.
+        print(f"AMap routing failed, falling back to Mapbox: {e}")
+
+    params.put("NavDestination", json.dumps(destination))
     return {"message": "Destination set"}
 
   @app.route("/api/navigation/favorite", methods=["DELETE"])

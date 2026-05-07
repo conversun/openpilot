@@ -13,9 +13,9 @@ export function NavKeys() {
     lastGroup: "",
     message: "",
 
-    amap1Key: "", amap2Key: "",
-    editA1: false, editA2: false,
-    savedA1: false, savedA2: false,
+    amap1Key: "", amap2Key: "", amapWebKey: "",
+    editA1: false, editA2: false, editAWeb: false,
+    savedA1: false, savedA2: false, savedAWeb: false,
 
     publicKey: "", secretKey: "",
     editPublic: false, editSecret: false,
@@ -64,10 +64,11 @@ export function NavKeys() {
   }
 
   const meta = {
-    amap1:  { prop: "amap1Key",  saved: "savedA1",     edit: "editA1",     prefix: "",    body: "amap1", minLength: 32  },
-    amap2:  { prop: "amap2Key",  saved: "savedA2",     edit: "editA2",     prefix: "",    body: "amap2", minLength: 32  },
-    public: { prop: "publicKey", saved: "savedPublic", edit: "editPublic", prefix: "pk.", body: "public", minLength: 80 },
-    secret: { prop: "secretKey", saved: "savedSecret", edit: "editSecret", prefix: "sk.", body: "secret", minLength: 80 }
+    amap1:    { prop: "amap1Key",   saved: "savedA1",     edit: "editA1",     prefix: "",    body: "amap1",    minLength: 32 },
+    amap2:    { prop: "amap2Key",   saved: "savedA2",     edit: "editA2",     prefix: "",    body: "amap2",    minLength: 32 },
+    amap_web: { prop: "amapWebKey", saved: "savedAWeb",   edit: "editAWeb",   prefix: "",    body: "amap_web", minLength: 32 },
+    public:   { prop: "publicKey",  saved: "savedPublic", edit: "editPublic", prefix: "pk.", body: "public",   minLength: 80 },
+    secret:   { prop: "secretKey",  saved: "savedSecret", edit: "editSecret", prefix: "sk.", body: "secret",   minLength: 80 }
   }
 
   const canSave = (kind) => {
@@ -86,19 +87,21 @@ export function NavKeys() {
 
   const getDeleteLabel = (kind) => {
     switch (kind) {
-      case "amap1": return "高德密钥"
-      case "amap2": return "高德安全密钥"
-      case "public": return "Mapbox 公钥"
-      case "secret": return "Mapbox 私钥"
+      case "amap1":    return "高德 JS Key"
+      case "amap2":    return "高德 JS Secret"
+      case "amap_web": return "高德 Web Key"
+      case "public":   return "Mapbox 公钥"
+      case "secret":   return "Mapbox 私钥"
       default: return kind
     }
   }
 
   const labelMap = {
-    amap1: "密钥",
-    amap2: "安全密钥",
-    public: "公钥",
-    secret: "私钥",
+    amap1:    "JS Key",
+    amap2:    "JS Secret",
+    amap_web: "Web Key",
+    public:   "公钥",
+    secret:   "私钥",
   }
 
   const api = {
@@ -115,8 +118,10 @@ export function NavKeys() {
 
       state.amap1Key = data.amap1Key ?? ""
       state.amap2Key = data.amap2Key ?? ""
+      state.amapWebKey = data.amapWebKey ?? ""
       state.savedA1 = !!state.amap1Key
       state.savedA2 = !!state.amap2Key
+      state.savedAWeb = !!state.amapWebKey
 
       state.publicKey = data.mapboxPublic ?? ""
       state.secretKey = data.mapboxSecret ?? ""
@@ -303,7 +308,7 @@ export function NavKeys() {
   return html`
     <div class="navkeys-wrapper navkeys-offset-top">
       <div class="navkeys-container">
-        ${renderGroup("高德密钥", ["amap1", "amap2"])}
+        ${renderGroup("高德密钥", ["amap1", "amap2", "amap_web"])}
         ${renderStatus("amap")}
       </div>
       <div class="navkeys-container">

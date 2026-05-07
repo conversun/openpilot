@@ -176,6 +176,8 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("AlwaysOnLateralMain", "1", 2, "0"),
   ("AMapKey1", "", 0, ""),
   ("AMapKey2", "", 0, ""),
+  ("AMapWebKey", "", 0, ""),  # Web service key (REST API). Distinct from AMapKey1/2 which are JS SDK keys.
+  ("UseAMapRouting", "0", 1, "0"),
   ("AutomaticallyDownloadModels", "1", 1, "0"),
   ("AutomaticUpdates", "1", 0, "1"),
   ("AvailableModelNames", "", 1, ""),
