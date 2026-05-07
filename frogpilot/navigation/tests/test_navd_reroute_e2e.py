@@ -332,3 +332,66 @@ class TestRouteEngineReroute:
     # Existing route preserved
     assert engine.route is old_route, "existing route must survive transient failure"
     assert engine.step_idx == 0, "step_idx must not be reset"
+
+  def test_recompute_route_off_route_drives_fresh_amap_call(self, fake_navd_module):
+    """True end-to-end reroute: simulate GPS deviation by mocking should_recompute to True,
+    then call recompute_route() (NOT calculate_route directly). Verify fetch_amap_route is
+    invoked with the NEW deviated last_position, not the original origin from the active route.
+    """
+    engine = self._make_engine(fake_navd_module)
+    engine.params.get_bool.return_value = True
+    engine.params.get.side_effect = lambda key, encoding=None: {
+      "AMapWebKey": "test_key", "AMapRouteStrategy": "32",
+      "NavDestination": '{"latitude":22.64,"longitude":113.82,"place_name":"x"}',
+    }.get(key)
+
+    destination = fake_navd_module.Coordinate(22.64, 113.82)
+    engine.nav_destination = destination
+    engine.route = [{"distance": 1000.0}]
+    engine.route_geometry = [[fake_navd_module.Coordinate(22.61, 114.03)]]
+    engine.step_idx = 0
+
+    deviated_position = fake_navd_module.Coordinate(22.62, 114.06)
+    engine.last_position = deviated_position
+    engine.gps_ok = True
+    engine.position_std_norm = 5.0
+    engine.recompute_countdown = 0
+
+    captured_origins: list[tuple[float, float]] = []
+
+    def fake_fetch(api_key, origin_lng, origin_lat, dest_lng, dest_lat, **kwargs):
+      captured_origins.append((origin_lng, origin_lat))
+      return {
+        "status": "1",
+        "route": {"paths": [{
+          "distance": "500", "cost": {"duration": "30"},
+          "steps": [{
+            "step_distance": "500",
+            "polyline": f"{origin_lng},{origin_lat};{dest_lng},{dest_lat}",
+            "navi": {"action": "直行", "assistant_action": ""},
+            "instruction": "to dest",
+          }],
+        }]},
+      }
+
+    coord_helper = fake_navd_module.Coordinate
+
+    def stub_coord_from_param(key, params):
+      if key == "NavDestination":
+        return destination
+      return None
+
+    with patch("openpilot.frogpilot.navigation.amap_route_adapter.fetch_amap_route", side_effect=fake_fetch), \
+         patch("openpilot.frogpilot.navigation.amap_route_adapter.requests.get"), \
+         patch.object(engine, "should_recompute", return_value=True), \
+         patch("openpilot.selfdrive.navd.navd.coordinate_from_param", side_effect=stub_coord_from_param), \
+         patch("builtins.open"):
+      engine.recompute_route()
+
+    assert len(captured_origins) == 1, \
+      f"recompute_route should drive exactly one fresh AMap call, got {len(captured_origins)}"
+    actual_origin = captured_origins[0]
+    assert actual_origin == (deviated_position.longitude, deviated_position.latitude), (
+      f"reroute must use the deviated current position, got {actual_origin} "
+      f"(expected {(deviated_position.longitude, deviated_position.latitude)})"
+    )

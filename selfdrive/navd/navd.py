@@ -183,12 +183,10 @@ class RouteEngine:
     if lang is not None:
       lang = lang.replace('main_', '')
 
-    token = self.mapbox_token
-    if token is None:
-      token = self.api.get_token()
-
+    # Mapbox token + URL params are built lazily INSIDE the Mapbox branch below —
+    # never touch self.api.get_token() when AMap routing is enabled, since AMap-only
+    # devices won't have Mapbox API credentials and self.api may be None.
     params = {
-      'access_token': token,
       'annotations': 'maxspeed',
       'geometries': 'geojson',
       'overview': 'full',
@@ -261,6 +259,15 @@ class RouteEngine:
         # remove_keys() returns new objects so aliasing is safe; matches Mapbox path's intent.
         r1 = json.loads(json.dumps(r))
       else:
+        token = self.mapbox_token
+        if token is None and self.api is not None:
+          token = self.api.get_token()
+        if token is None:
+          raise requests.exceptions.RequestException(
+            "No Mapbox token available and AMap routing is not enabled. "
+            "Set MapboxSecretKey or enable UseAMapRouting + AMapWebKey."
+          )
+        params['access_token'] = token
         resp = requests.get(url, params=params, timeout=10)
         if resp.status_code != 200:
           cloudlog.event("API request failed", status_code=resp.status_code, text=resp.text, error=True)
