@@ -115,7 +115,18 @@ export async function getCoordinatesFromSearch(searchValue) {
 export async function getRoutes(from, to, strategy = "32") {
   const url = `/api/route?origin=${from[0]},${from[1]}&destination=${to[0]},${to[1]}&strategy=${strategy}`;
   const response = await fetch(url);
-  const data = await response.json();
+  let data = {};
+  try {
+    data = await response.json();
+  } catch (e) {
+    throw new Error(`路径服务返回非 JSON 响应 (HTTP ${response.status})`);
+  }
+  if (!response.ok || data.error) {
+    throw new Error(data.error || `路径服务 HTTP ${response.status}`);
+  }
+  if (data.status && String(data.status) !== "1") {
+    throw new Error(`高德返回错误: ${data.info || "unknown"}`);
+  }
   if (data.route && data.route.paths) {
     return data.route.paths;
   }

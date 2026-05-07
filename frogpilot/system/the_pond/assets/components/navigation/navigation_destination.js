@@ -62,8 +62,9 @@ export function NavDestination() {
   let destinationMarker;
   let favoriteMarkers = [];
   const state = reactive({
-    amap1Key: undefined,
+amap1Key: undefined,
     amap2Key: undefined,
+    amapWebKey: undefined,
     confirmedRoute: null,
     confirmedRouteRefresh: 0,
     destination: undefined,
@@ -239,7 +240,7 @@ let amapAutoComplete = null;
       state.suggestions = "[]";
     } catch (err) {
       console.error("Failed to calculate route:", err);
-      showSnackbar("路线计算失败...");
+      showSnackbar(`路径计算失败: ${err?.message || "未知错误"}`, "error");
     } finally {
       state.loadingRoute = false;
     }
@@ -250,8 +251,9 @@ let amapAutoComplete = null;
   async function getNavigationData() {
     const res = await fetch("/api/navigation");
     const data = await res.json();
-    state.amap1Key = data.amap1Key?.trim() || "";
+state.amap1Key = data.amap1Key?.trim() || "";
     state.amap2Key = data.amap2Key?.trim() || "";
+    state.amapWebKey = data.amapWebKey?.trim() || "";
     state.isMetric = data.isMetric ?? true;
     
     const paramsRes = await fetch("/api/params?keys=UseAMapRouting,AMapRouteStrategy");
@@ -261,8 +263,9 @@ let amapAutoComplete = null;
       state.amapRouteStrategy = parseInt(p.AMapRouteStrategy) || 32;
     }
 
-    const hasAMap = !!state.amap1Key && !!state.amap2Key;
-    state.missingKeys = !hasAMap;
+    const hasJsKeys = !!state.amap1Key && !!state.amap2Key;
+    const hasWebKey = !!state.amapWebKey;
+    state.missingKeys = !(hasJsKeys && hasWebKey);
     if (state.missingKeys) return;
     
     state.lastPosition = {
