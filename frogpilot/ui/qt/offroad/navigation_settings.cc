@@ -1,5 +1,24 @@
 #include "frogpilot/ui/qt/offroad/navigation_settings.h"
 
+#include <QCoreApplication>
+#include <QHash>
+
+static QString translateSpeedLimitStatus(const QString &status) {
+  static const QHash<QString, const char*> map = {
+    {"Calculating...",    QT_TRANSLATE_NOOP("FrogPilotNavigationPanel", "Calculating...")},
+    {"Hit API limit...",  QT_TRANSLATE_NOOP("FrogPilotNavigationPanel", "Hit API limit...")},
+    {"Completed!",        QT_TRANSLATE_NOOP("FrogPilotNavigationPanel", "Completed!")},
+  };
+  if (status.startsWith("Processing: ")) {
+    return QCoreApplication::translate("FrogPilotNavigationPanel", QT_TRANSLATE_NOOP("FrogPilotNavigationPanel", "Processing: %1")).arg(status.mid(QString("Processing: ").size()));
+  }
+  if (status.startsWith("Vetting: ")) {
+    return QCoreApplication::translate("FrogPilotNavigationPanel", QT_TRANSLATE_NOOP("FrogPilotNavigationPanel", "Vetting: %1")).arg(status.mid(QString("Vetting: ").size()));
+  }
+  auto it = map.find(status);
+  return it != map.end() ? QCoreApplication::translate("FrogPilotNavigationPanel", it.value()) : status;
+}
+
 FrogPilotNavigationPanel::FrogPilotNavigationPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
   networkManager = new QNetworkAccessManager(this);
 
@@ -206,7 +225,7 @@ FrogPilotNavigationPanel::FrogPilotNavigationPanel(FrogPilotSettingsWindow *pare
       if (FrogPilotConfirmationDialog::yesorno(tr("This process takes a while. It's recommended to start when you're done driving and connected to stable Wi-Fi. Continue?"), this)) {
         updatingLimits = true;
 
-        updateSpeedLimitsToggle->setValue("Calculating...");
+        updateSpeedLimitsToggle->setValue(tr("Calculating..."));
 
         params_memory.put("UpdateSpeedLimitsStatus", "Calculating...");
         params_memory.putBool("UpdateSpeedLimits", true);
@@ -283,10 +302,10 @@ void FrogPilotNavigationPanel::showEvent(QShowEvent *event) {
   updateSpeedLimitsToggle->setVisibleButton(1, !updatingLimits);
 
   if (updatingLimits) {
-    updateSpeedLimitsToggle->setValue(QString::fromStdString(params_memory.get("UpdateSpeedLimitsStatus")));
+    updateSpeedLimitsToggle->setValue(translateSpeedLimitStatus(QString::fromStdString(params_memory.get("UpdateSpeedLimitsStatus"))));
   } else {
     updateSpeedLimitsToggle->setEnabledButton(1, frogpilot_scene.online && util::system_time_valid() && parked);
-    updateSpeedLimitsToggle->setValue(frogpilot_scene.online ? (parked ? "" : "Not parked") : tr("Offline..."));
+    updateSpeedLimitsToggle->setValue(frogpilot_scene.online ? (parked ? "" : tr("Not parked")) : tr("Offline..."));
     updateSpeedLimitsToggle->setVisible(parent->tuningLevel >= parent->frogpilotToggleLevels["SpeedLimitFiller"].toDouble());
   }
 }
@@ -379,11 +398,11 @@ void FrogPilotNavigationPanel::updateState(const UIState &s, const FrogPilotUISt
         params_memory.remove("UpdateSpeedLimitsStatus");
       });
     } else {
-      updateSpeedLimitsToggle->setValue(QString::fromStdString(params_memory.get("UpdateSpeedLimitsStatus")));
+      updateSpeedLimitsToggle->setValue(translateSpeedLimitStatus(QString::fromStdString(params_memory.get("UpdateSpeedLimitsStatus"))));
     }
   } else {
     updateSpeedLimitsToggle->setEnabledButton(1, fs.frogpilot_scene.online && util::system_time_valid() && parked);
-    updateSpeedLimitsToggle->setValue(fs.frogpilot_scene.online ? (parked ? "" : "Not parked") : tr("Offline..."));
+    updateSpeedLimitsToggle->setValue(fs.frogpilot_scene.online ? (parked ? "" : tr("Not parked")) : tr("Offline..."));
   }
 
   parent->keepScreenOn = primelessLayout->currentIndex() == 1 || updatingLimits;
