@@ -86,3 +86,4 @@ poetry.toml
 Pipfile
 
 .opencode
+.sisyphus/

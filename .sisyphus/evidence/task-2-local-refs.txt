@@ -1,2 +1,0 @@
-16:    <link href="/assets/vendor/mapbox-gl.css" rel="stylesheet">
-39:    <script src="/assets/vendor/mapbox-gl.js"></script>

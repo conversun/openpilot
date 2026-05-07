@@ -1,1 +1,0 @@
-641:    mapboxgl.workerUrl = "/assets/vendor/mapbox-gl-csp-worker.js";
