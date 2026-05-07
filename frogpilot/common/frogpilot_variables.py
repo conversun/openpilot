@@ -178,6 +178,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("AMapKey2", "", 0, ""),
   ("AMapWebKey", "", 0, ""),  # Web service key (REST API). Distinct from AMapKey1/2 which are JS SDK keys.
   ("UseAMapRouting", "0", 1, "0"),
+  ("AMapRouteStrategy", "32", 1, "32"),  # AMap v5 driving strategy: 32=default, 33=avoid jam, 38=fastest, 45=avoid jam + fastest
   ("AutomaticallyDownloadModels", "1", 1, "0"),
   ("AutomaticUpdates", "1", 0, "1"),
   ("AvailableModelNames", "", 1, ""),

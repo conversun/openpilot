@@ -185,15 +185,22 @@ class RouteEngine:
         from openpilot.selfdrive.navd.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
         cloudlog.warning("Routing via AMap v5 driving API")
 
-        # AMap doesn't natively use bearing for initial planning, and our adapter doesn't
+# AMap doesn't natively use bearing for initial planning, and our adapter doesn't
         # support waypoints yet (TODO: thread waypoint_coords through).
-        amap_resp = fetch_amap_route(
-          amap_web_key,
-          self.last_position.longitude,
-          self.last_position.latitude,
-          destination.longitude,
+        # Strategy: see https://lbs.amap.com/api/webservice/guide/api/newroute (驾车算路策略).
+        # 32=default, 33=avoid jam, 38=fastest, 45=avoid jam + fastest, etc.
+        try:
+          amap_strategy = int(self.params.get("AMapRouteStrategy", encoding='utf8') or "32")
+        except ValueError:
+          amap_strategy = 32
+amap_resp = fetch_amap_route(
+amap_web_key,
+self.last_position.longitude,
+self.last_position.latitude,
+destination.longitude,
           destination.latitude,
-        )
+          strategy=amap_strategy,
+)
 
         # Use the saved NavDestination's place_name for the route summary
         nav_dest_json = self.params.get("NavDestination", encoding='utf8')
