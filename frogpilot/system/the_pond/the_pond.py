@@ -437,16 +437,28 @@ def setup(app):
   @app.route("/api/params", methods=["GET"])
   def get_param():
     """Read params via either ?key=<single> (returns plain text) or ?keys=<csv> (returns JSON).
-    The CSV form is preferred; the single-key form is kept for backward compat with existing callers."""
+    The CSV form is preferred; the single-key form is kept for backward compat with existing callers.
+    Unknown/unregistered keys yield an empty string (single form) or are omitted (CSV form);
+    we deliberately do NOT 500 on unknown keys so callers can probe optional params safely."""
+    def safe_get(key):
+      if not key:
+        return None
+      try:
+        return params.get(key, encoding="utf8")
+      except Exception:
+        # params.cc raises for unregistered keys. Treat as absent rather than crashing the request.
+        traceback.print_exc()
+        return None
+
     keys_csv = request.args.get("keys")
     if keys_csv:
       result = {}
       for k in keys_csv.split(","):
         k = k.strip()
         if k:
-          result[k] = params.get(k, encoding="utf8") or ""
+          result[k] = safe_get(k) or ""
       return jsonify(result), 200
-    return params.get(request.args.get("key")) or "", 200
+    return safe_get(request.args.get("key")) or "", 200
 
   @app.route("/api/params_memory", methods=["GET"])
   def get_param_memory():
