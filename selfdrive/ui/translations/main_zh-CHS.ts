@@ -5376,6 +5376,14 @@ This may take up to a minute.</source>
     <message>
         <source>checking...</source>
         <translation>检查中…</translation>
+    </message>
+    <message>
+        <source>downloading…</source>
+        <translation>下载中…</translation>
+    </message>
+    <message>
+        <source>checking…</source>
+        <translation>检查中…</translation>
     </message></context>
 <context>
     <name>SshControl</name>
