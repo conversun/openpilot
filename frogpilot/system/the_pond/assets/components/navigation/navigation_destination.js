@@ -9,54 +9,9 @@ import {
   removeRouteFromMap,
   getOrdinalSuffix,
   highlightRoute,
+  wgs84ToGcj02,
 } from "./navigation_utilities.js";
 import { Modal } from "/assets/components/modal.js";
-
-function sha1hex(str) {
-  const rot = (v, s) => (v << s) | (v >>> (32 - s));
-  const bytes = new TextEncoder().encode(str);
-  const words = [];
-  for (let i = 0; i < bytes.length; i++) {
-    words[i >> 2] |= bytes[i] << ((3 - (i & 3)) << 3);
-  }
-  const bitLen = bytes.length << 3;
-  words[bitLen >> 5] |= 0x80 << (24 - (bitLen & 31));
-  words[((bitLen + 64 >> 9) << 4) + 15] = bitLen;
-  let [a, b, c, d, e] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
-  const w = new Array(80);
-  for (let i = 0; i < words.length; i += 16) {
-    for (let t = 0; t < 16; t++) w[t] = words[i + t] | 0;
-    for (let t = 16; t < 80; t++) {
-      w[t] = rot(w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16], 1);
-    }
-    let [aa, bb, cc, dd, ee] = [a, b, c, d, e];
-    for (let t = 0; t < 80; t++) {
-      const k = t < 20 ? 0x5a827999 : t < 40 ? 0x6ed9eba1 : t < 60 ? 0x8f1bbcdc : 0xca62c1d6;
-      const f = t < 20 ? (bb & cc) | (~bb & dd) : t < 40 ? bb ^ cc ^ dd : t < 60 ? (bb & cc) | (bb & dd) | (cc & dd) : bb ^ cc ^ dd;
-      const tmp = (rot(aa, 5) + f + ee + k + w[t]) >>> 0;
-      ee = dd;
-      dd = cc;
-      cc = rot(bb, 30) >>> 0;
-      bb = aa;
-      aa = tmp;
-    }
-    a = (a + aa) >>> 0;
-    b = (b + bb) >>> 0;
-    c = (c + cc) >>> 0;
-    d = (d + dd) >>> 0;
-    e = (e + ee) >>> 0;
-  }
-  return [a, b, c, d, e].map(x => x.toString(16).padStart(8, "0")).join("");
-}
-
-async function geometryHashFromRoute(route) {
-  const flat = route.geometry.coordinates.flat().join(",");
-  if (crypto?.subtle?.digest && window.isSecureContext) {
-    const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(flat));
-    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
-  }
-  return sha1hex(flat);
-}
 
 async function setSpecial(favorite, type, state, loadFavoritesAlphabetically) {
   try {
@@ -109,7 +64,6 @@ export function NavDestination() {
   const state = reactive({
     amap1Key: undefined,
     amap2Key: undefined,
-    canToggleProvider: false,
     confirmedRoute: null,
     confirmedRouteRefresh: 0,
     destination: undefined,
@@ -121,27 +75,25 @@ export function NavDestination() {
     isMetric: true,
     lastPosition: undefined,
     loadingRoute: false,
-    mapboxPublic: undefined,
-    mapboxSecret: undefined,
     missingKeys: null,
     newFavoriteName: "",
     noResults: false,
     previousDestinations: "[]",
     searchLoading: false,
-    searchProvider: "mapbox",
     selectedRoute: null,
     showRemoveFavoriteModal: false,
     showRenameFavoriteModal: false,
-    suggestions: "[]"
+    suggestions: "[]",
+    useAMapRouting: false,
+    amapRouteStrategy: 32
   });
   const searchFieldState = reactive({ value: "" });
-  const sessionToken = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
 
   let amapLoadPromise = null;
   let amapAutoComplete = null;
-  let amapPlaceSearch = null;
   let searchRequestId = 0;
   let isComposing = false;
+  let drawnRoutes = [];
 
   async function ensureAMapLoaded() {
     if (amapAutoComplete) return amapAutoComplete;
@@ -164,24 +116,18 @@ export function NavDestination() {
     amapLoadPromise = AMapLoader.load({
       key: state.amap1Key,
       version: '2.0',
-      plugins: ['AMap.AutoComplete', 'AMap.PlaceSearch']
+      plugins: ['AMap.AutoComplete', 'AMap.PlaceSearch', 'AMap.Geocoder']
     }).then(AMap => {
       amapAutoComplete = new AMap.AutoComplete({ city: '全国', datatype: 'all' });
-      amapPlaceSearch = new AMap.PlaceSearch({ city: '全国', pageSize: 10, extensions: 'all' });
       return amapAutoComplete;
     }).catch(e => {
       console.error("Failed to load AMap SDK:", e);
-      const msg = e?.message || e?.info || String(e);
-      showSnackbar(`高德地图加载失败: ${msg}`, "error");
+      showSnackbar(`高德地图加载失败: ${e?.message || e?.info || String(e)}`, "error");
       amapLoadPromise = null;
       return null;
     });
 
     return await amapLoadPromise;
-  }
-
-  function areRoutesEqual(a, b) {
-    return a?.routeHash && b?.routeHash && a.routeHash === b.routeHash;
   }
 
   function confirmRemoveFavorite(favorite) {
@@ -209,37 +155,42 @@ export function NavDestination() {
     state.loadingRoute = true;
     try {
       const { name, longitude, latitude } = destination;
-      const coords = [longitude, latitude];
+      const coords = [longitude, latitude]; // WGS84
 
       const inputEl = document.getElementById("search-field");
       if (inputEl && !resume) {
         inputEl.value = name;
       }
 
-      if (destinationMarker) destinationMarker.remove();
-      destinationMarker = new mapboxgl.Marker().setLngLat(coords).addTo(map);
+      if (destinationMarker) {
+        map.remove(destinationMarker);
+      }
+
+      const gloc = wgs84ToGcj02(coords[0], coords[1]);
+      destinationMarker = new AMap.Marker({ position: gloc });
+      map.add(destinationMarker);
 
       const routes = await getRoutes(
-        `${state.lastPosition.longitude},${state.lastPosition.latitude}`,
-        `${coords[0]},${coords[1]}`,
-        state.mapboxPublic
+        [state.lastPosition.longitude, state.lastPosition.latitude],
+        [coords[0], coords[1]],
+        state.amapRouteStrategy
       );
 
-      removeRouteFromMap(map);
+      removeRouteFromMap(map, drawnRoutes);
 
       if (routes.length > 0) {
         const selectedRouteId = "main";
         const selectedRouteData = routes[0];
-        const routeHash = await geometryHashFromRoute(selectedRouteData);
+        const routeHash = String(selectedRouteData.distance + selectedRouteData.time);
         const selected = {
           name,
-          duration: selectedRouteData.duration,
-          distance: selectedRouteData.distance,
+          duration: parseInt(selectedRouteData.time),
+          distance: parseInt(selectedRouteData.distance),
           destinationCoordinates: coords,
           startingCoordinates: [state.lastPosition.longitude, state.lastPosition.latitude],
           routeId: selectedRouteId,
           routeHash,
-          steps: selectedRouteData?.legs?.[0]?.steps || []
+          steps: selectedRouteData.steps || []
         };
 
         state.selectedRoute = selected;
@@ -247,6 +198,7 @@ export function NavDestination() {
 
         localStorage.setItem("lastRouteId", selected.routeId);
 
+        drawnRoutes = routes;
         addRouteToMap(
           map,
           routes,
@@ -255,10 +207,10 @@ export function NavDestination() {
           (route, routeId) => {
             state.selectedRoute = {
               ...state.selectedRoute,
-              duration: route.duration,
-              distance: route.distance,
+              duration: parseInt(route.time),
+              distance: parseInt(route.distance),
               routeId,
-              steps: route?.legs?.[0]?.steps || []
+              steps: route.steps || []
             };
             highlightRoute(map, routes, routeId);
           },
@@ -267,15 +219,7 @@ export function NavDestination() {
         );
 
         if (resume && map) {
-          requestAnimationFrame(() => {
-            map.flyTo({
-              center: [state.lastPosition.longitude, state.lastPosition.latitude],
-              zoom: 18,
-              pitch: 45,
-              speed: 1,
-              curve: 1
-            });
-          });
+          map.setZoomAndCenter(18, gloc);
         }
       }
 
@@ -288,20 +232,26 @@ export function NavDestination() {
     }
   }
 
+
+
   async function getNavigationData() {
     const res = await fetch("/api/navigation");
     const data = await res.json();
-    state.mapboxPublic = data.mapboxPublic.trim();
-    state.mapboxSecret = data.mapboxSecret.trim();
     state.amap1Key = data.amap1Key?.trim() || "";
     state.amap2Key = data.amap2Key?.trim() || "";
     state.isMetric = data.isMetric ?? true;
-    const hasMapbox = !!state.mapboxPublic && !!state.mapboxSecret;
+    
+    const paramsRes = await fetch("/api/params?keys=UseAMapRouting,AMapRouteStrategy");
+    if (paramsRes.ok) {
+      const p = await paramsRes.json();
+      state.useAMapRouting = p.UseAMapRouting === "1";
+      state.amapRouteStrategy = parseInt(p.AMapRouteStrategy) || 32;
+    }
+
     const hasAMap = !!state.amap1Key && !!state.amap2Key;
-    state.missingKeys = !hasMapbox;
-    state.canToggleProvider = hasMapbox && hasAMap;
-    state.searchProvider = hasAMap ? "amap" : (hasMapbox ? "mapbox" : "");
+    state.missingKeys = !hasAMap;
     if (state.missingKeys) return;
+    
     state.lastPosition = {
       latitude: parseFloat(data.lastPosition.latitude),
       longitude: parseFloat(data.lastPosition.longitude)
@@ -340,8 +290,7 @@ export function NavDestination() {
       if (isComposing) return;
       const val = e.target.value.trim();
       searchFieldState.value = e.target.value;
-      const minLen = state.searchProvider === "amap" ? 1 : 3;
-      if (val.length < minLen) {
+      if (val.length < 1) {
         if (val.length === 0) { state.suggestions = "[]"; state.noResults = false; }
         return;
       }
@@ -352,46 +301,24 @@ export function NavDestination() {
       state.searchLoading = true;
       const currentRequestId = ++searchRequestId;
       try {
-        if (state.searchProvider === "mapbox") {
-          const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
-          const params = new URLSearchParams({
-            proximity: prox,
-            access_token: state.mapboxPublic,
-            session_token: sessionToken,
-            q: val,
-            limit: 4
-          });
-          const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
-          const data = await res.json();
+        const auto = await ensureAMapLoaded();
+        if (!auto) { state.searchLoading = false; return; }
+        auto.search(val, (status, result) => {
           if (currentRequestId !== searchRequestId) return;
-          if (data.suggestions?.length > 0) {
-            state.suggestions = JSON.stringify(data.suggestions);
+          if (status === "complete" && result.tips?.length > 0) {
+            state.suggestions = JSON.stringify(result.tips.filter(t => t.location || t.adcode));
+          } else if (status === "error") {
+            showSnackbar("搜索失败，请重试", "error");
           } else {
             state.noResults = true;
           }
-        } else {
-          const auto = await ensureAMapLoaded();
-          if (!auto) { state.searchLoading = false; return; }
-          auto.search(val, (status, result) => {
-            if (currentRequestId !== searchRequestId) return;
-            if (status === "complete" && result.tips?.length > 0) {
-              state.suggestions = JSON.stringify(result.tips.filter(t => t.location));
-            } else if (status === "error") {
-              showSnackbar("搜索失败，请重试", "error");
-            } else {
-              state.noResults = true;
-            }
-            state.searchLoading = false;
-          });
-          return;
-        }
+          state.searchLoading = false;
+        });
       } catch {
         if (currentRequestId === searchRequestId) {
           showSnackbar("搜索失败，请重试", "error");
           state.searchLoading = false;
         }
-      } finally {
-        if (state.searchProvider === "mapbox" && currentRequestId === searchRequestId) state.searchLoading = false;
       }
     }
   }
@@ -404,35 +331,34 @@ export function NavDestination() {
   }
 
   function addFavoriteMarkers(favorites) {
-    favoriteMarkers.forEach(marker => marker.remove());
+    favoriteMarkers.forEach(marker => map.remove(marker));
     favoriteMarkers = [];
+    if (!map) return;
     favorites.forEach(fav => {
-      const el = document.createElement("div");
-      el.className = "favorite-marker";
       let icon = "❤️";
       let popupText = fav.name;
       if (fav.is_home) {
         icon = "🏠";
-        el.className += " home-marker";
         popupText = `家庭：${fav.name}`;
       } else if (fav.is_work) {
         icon = "💼";
-        el.className += " work-marker";
         popupText = `工作：${fav.name}`;
       }
-      el.innerHTML = icon;
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([fav.longitude, fav.latitude])
-        .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: false }).setText(popupText))
-        .addTo(map);
-      el.addEventListener("click", () => {
-        if (marker.getPopup().isOpen()) {
-          marker.togglePopup();
-        }
+      
+      const content = `<div class="favorite-marker" style="font-size: 24px; cursor: pointer;">${icon}</div>`;
+      const gloc = wgs84ToGcj02(fav.longitude, fav.latitude);
+      
+      const marker = new AMap.Marker({
+        position: gloc,
+        content: content,
+        title: popupText
+      });
+
+      marker.on("click", () => {
         initiateNavigation(fav);
       });
-      el.addEventListener("mouseenter", () => marker.togglePopup());
-      el.addEventListener("mouseleave", () => marker.togglePopup());
+      
+      map.add(marker);
       favoriteMarkers.push(marker);
     });
   }
@@ -521,8 +447,7 @@ export function NavDestination() {
     if (isComposing) return;
     window.searchTimeout = setTimeout(async () => {
       const val = newVal;
-      const minLen = state.searchProvider === "amap" ? 1 : 3;
-      if (val.length < minLen) {
+      if (val.length < 1) {
         if (val.length === 0) {
           state.suggestions = "[]";
           state.noResults = false;
@@ -536,52 +461,30 @@ export function NavDestination() {
       state.searchLoading = true;
       const currentRequestId = ++searchRequestId;
       try {
-        if (state.searchProvider === "mapbox") {
-          const prox = `${state.lastPosition.longitude},${state.lastPosition.latitude}`;
-          const params = new URLSearchParams({
-            proximity: prox,
-            access_token: state.mapboxPublic,
-            session_token: sessionToken,
-            q: val,
-            limit: 4
-          });
-          const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
-          const data = await res.json();
+        const auto = await ensureAMapLoaded();
+        if (!auto) { state.searchLoading = false; return; }
+        auto.search(val, (status, result) => {
           if (currentRequestId !== searchRequestId) return;
-          if (data.suggestions?.length > 0) {
-            state.suggestions = JSON.stringify(data.suggestions);
+          if (status === "complete" && result.tips?.length > 0) {
+            state.suggestions = JSON.stringify(result.tips.filter(t => t.location || t.adcode));
+          } else if (status === "error") {
+            showSnackbar("搜索失败，请重试", "error");
           } else {
             state.noResults = true;
           }
-        } else {
-          const auto = await ensureAMapLoaded();
-          if (!auto) { state.searchLoading = false; return; }
-          auto.search(val, (status, result) => {
-            if (currentRequestId !== searchRequestId) return;
-            if (status === "complete" && result.tips?.length > 0) {
-              state.suggestions = JSON.stringify(result.tips.filter(t => t.location));
-            } else if (status === "error") {
-              showSnackbar("搜索失败，请重试", "error");
-            } else {
-              state.noResults = true;
-            }
-            state.searchLoading = false;
-          });
-          return;
-        }
+          state.searchLoading = false;
+        });
       } catch {
         if (currentRequestId === searchRequestId) {
           showSnackbar("搜索失败，请重试", "error");
           state.searchLoading = false;
         }
-      } finally {
-        if (state.searchProvider === "mapbox" && currentRequestId === searchRequestId) state.searchLoading = false;
       }
     }, 400);
   }
 
   async function selectSuggestion(sugg) {
-    const label = sugg.full_address || sugg.name || sugg.address || "未命名地点";
+    const label = sugg.name || sugg.address || "未命名地点";
     let coords;
     if (sugg.routeId) {
       initiateNavigation({
@@ -594,25 +497,22 @@ export function NavDestination() {
     }
     state.loadingRoute = true;
     try {
-      if (state.searchProvider === "mapbox") {
-        if (sugg.geometry && Array.isArray(sugg.geometry.coordinates)) {
-          coords = sugg.geometry.coordinates;
-        } else if (sugg.mapbox_id) {
-          const url = new URL(`https://api.mapbox.com/search/searchbox/v1/retrieve/${encodeURIComponent(sugg.mapbox_id)}`);
-          url.searchParams.set("access_token", state.mapboxPublic);
-          url.searchParams.set("session_token", sessionToken);
-          const ret = await fetch(url);
-          const retJson = await ret.json();
-          coords = retJson.features[0].geometry.coordinates;
-        } else {
-          coords = await getCoordinatesFromSearch(label, state.mapboxPublic);
+      const loc = sugg.location;
+      if (loc && typeof loc === 'object') {
+        const lng = loc.lng || loc[0];
+        const lat = loc.lat || loc[1];
+        if (lng && lat) {
+          coords = gcj02ToWgs84(parseFloat(lng), parseFloat(lat));
         }
-      } else {
-        const loc = sugg.location;
-        const lng = Array.isArray(loc) ? loc[0] : loc.lng;
-        const lat = Array.isArray(loc) ? loc[1] : loc.lat;
-        coords = gcj02ToWgs84(lng, lat);
       }
+      
+      if (!coords) {
+        coords = await getCoordinatesFromSearch(label);
+        if (coords) {
+           coords = gcj02ToWgs84(coords[0], coords[1]);
+        }
+      }
+
       if (coords) {
         initiateNavigation({
           name: label,
@@ -631,59 +531,61 @@ export function NavDestination() {
   }
 
   const setupMap = async () => {
-    if (!state.mapboxPublic || state.initialized) return;
+    if (state.initialized) return;
     const container = document.getElementById("map");
     if (!container) {
       requestAnimationFrame(setupMap);
       return;
     }
+
+    const AMap = await ensureAMapLoaded();
+    if (!AMap) return;
+
     state.initialized = true;
-    mapboxgl.workerUrl = "/assets/vendor/mapbox-gl-csp-worker.js";
-    mapboxgl.accessToken = state.mapboxPublic;
-    map = new mapboxgl.Map({
-      container,
-      center: [state.lastPosition.longitude, state.lastPosition.latitude],
+    const gloc = wgs84ToGcj02(state.lastPosition.longitude, state.lastPosition.latitude);
+    
+    map = new AMap.Map("map", {
+      center: gloc,
       zoom: 15,
+      viewMode: "3D",
       pitch: 45,
-      speed: 1,
-      curve: 1,
-      attributionControl: false,
-      logoPosition: "bottom-right",
-      style: "mapbox://styles/frogsgomoo/cmcfv151j000o01rcdxebhl76"
+      mapStyle: "amap://styles/normal"
     });
-    new mapboxgl.Marker().setLngLat([state.lastPosition.longitude, state.lastPosition.latitude]).addTo(map);
-    map.on("load", () => {
-      map.flyTo({
-        center: [state.lastPosition.longitude, state.lastPosition.latitude],
-        zoom: 18,
-        pitch: 45,
-        speed: 1,
-        curve: 1
-      });
+
+    const startMarker = new AMap.Marker({ position: gloc });
+    map.add(startMarker);
+
+    map.on("complete", () => {
+      map.setZoomAndCenter(18, gloc);
+      addFavoriteMarkers(state.favoriteRoutes || []);
+      
       if (state.destination) {
         const savedId = localStorage.getItem("activeRouteId");
         initiateNavigation({ ...state.destination, routeId: savedId }, { resume: true });
       }
     });
-    map.on("style.load", () => {
-      const labelLayer = map.getStyle().layers.find(l => l.type === "symbol" && l.layout["text-field"]).id;
-      map.addLayer(
-        {
-          id: "add-3d-buildings",
-          source: "composite",
-          "source-layer": "building",
-          filter: ["==", "extrude", "true"],
-          type: "fill-extrusion",
-          minzoom: 15,
-          paint: {
-            "fill-extrusion-color": "#aaa",
-            "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.05, ["get", "height"]],
-            "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.05, ["get", "min_height"]],
-            "fill-extrusion-opacity": 0.6
+
+    // Long press or click
+    map.on("click", async (e) => {
+      const lng = e.lnglat.getLng();
+      const lat = e.lnglat.getLat();
+      const wgs = gcj02ToWgs84(lng, lat);
+
+      // fetch reverse geocode to get name
+      try {
+        const res = await fetch(`/api/geocode/reverse?lng=${wgs[0]}&lat=${wgs[1]}`);
+        if (res.ok) {
+          const data = await res.json();
+          let name = "未知地点";
+          if (data.regeocode && data.regeocode.formatted_address) {
+            name = data.regeocode.formatted_address;
           }
-        },
-        labelLayer
-      );
+          initiateNavigation({ name, longitude: wgs[0], latitude: wgs[1] });
+        }
+      } catch (err) {
+        console.error(err);
+        initiateNavigation({ name: "已选择位置", longitude: wgs[0], latitude: wgs[1] });
+      }
     });
   };
 
@@ -698,7 +600,7 @@ export function NavDestination() {
               <section class="keys-required-wrapper">
                 <div class="keys-required-widget">
                   <div class="keys-required-title">需要导航密钥</div>
-                  <p class="keys-required-text">使用导航功能前，必须同时设置 Mapbox 公钥和私钥，或设置高德 API Key 和安全密钥。</p>
+                  <p class="keys-required-text">使用导航功能前，必须设置高德 API Key 和安全密钥。</p>
                   <a href="/navigation_keys" class="keys-required-button">前往“密钥管理”</a>
                 </div>
               </section>
@@ -709,12 +611,6 @@ export function NavDestination() {
                   <div class="search-controls">
                     <input autocomplete="off" id="search-field" class="${() => state.searchLoading ? 'searching' : ''}" placeholder="在此搜索" value="${() => searchFieldState.value}" @input="${searchInput}" @keydown="${handleSearchKey}" @compositionstart="${() => { isComposing = true; }}" @compositionend="${(e) => { isComposing = false; searchInput(e); }}" />
                     ${() => (state.favoritesCount > 0 ? html`<button class="favorites-toggle-button" @click="${handleFavoritesClick}">❤️ 收藏</button>` : "")}
-                    ${() => (state.canToggleProvider ? html`
-                      <div class="search-provider-toggle">
-                        <button class="${() => (state.searchProvider === "amap" ? "active" : "")}" @click="${() => { state.searchProvider = "amap"; state.suggestions = "[]"; state.noResults = false; const v = document.getElementById('search-field')?.value?.trim(); if (v) { searchInput({ target: { value: v } }); } }}">AMap</button>
-                        <button class="${() => (state.searchProvider === "mapbox" ? "active" : "")}" @click="${() => { state.searchProvider = "mapbox"; state.suggestions = "[]"; state.noResults = false; const v = document.getElementById('search-field')?.value?.trim(); if (v) { searchInput({ target: { value: v } }); } }}">Mapbox</button>
-                      </div>
-                    ` : "")}
                   </div>
                   <div id="infobox">
                     ${() => {
@@ -731,7 +627,8 @@ export function NavDestination() {
                             state.selectedRoute = null;
                             state.confirmedRoute = null;
                             state.suggestions = state.previousDestinations;
-                            if (destinationMarker) destinationMarker.remove();
+                            if (destinationMarker) map.remove(destinationMarker);
+                            removeRouteFromMap(map, drawnRoutes);
                           },
                           onConfirm: () => {
                             state.confirmedRoute = JSON.parse(JSON.stringify(state.selectedRoute));
@@ -753,8 +650,7 @@ export function NavDestination() {
                           removeFavorite: confirmRemoveFavorite,
                           renameFavorite: confirmRenameFavorite,
                           setHome: setHome,
-                          setWork: setWork,
-                          searchProvider: state.searchProvider
+                          setWork: setWork
                         });
                       }
                     }}
@@ -790,14 +686,14 @@ export function NavDestination() {
   `;
 }
 
-function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, renameFavorite, setHome, setWork, searchProvider }) {
+function SearchSuggestions({ suggestions, selectSuggestion, removeFavorite, renameFavorite, setHome, setWork }) {
   const isFavorite = s => s.name && s.latitude != null && s.longitude != null && s.routeId;
   const item = s => html`
     <div class="suggestion-item" @click="${() => selectSuggestion(s)}">
       <p>
         ${s.is_home ? "🏠 " : ""}
         ${s.is_work ? "💼 " : ""}
-        ${s.name || s.address}${searchProvider !== "mapbox" && s.district ? html`<span class="suggestion-district">· ${s.district}</span>` : ""}
+        ${s.name || s.address}${s.district ? html`<span class="suggestion-district">· ${s.district}</span>` : ""}
       </p>
       ${isFavorite(s) ? html`
         <div class="favorite-actions">
@@ -834,12 +730,15 @@ function NavigationDestination({
 }) {
   async function cancelNavigation() {
     showSnackbar("导航已取消...");
-    removeRouteFromMap(map);
     cancelNavigationFn();
     localStorage.removeItem("activeRouteId");
-    map.flyTo({ center: startingCoordinates, zoom: 15, pitch: 45, speed: 1, curve: 1 });
+
+    const gloc = wgs84ToGcj02(startingCoordinates[0], startingCoordinates[1]);
+    map.setZoomAndCenter(15, gloc);
     await fetch("/api/navigation", { method: "DELETE" });
   }
+
+
   async function confirmDestination() {
     onConfirm?.();
     showSnackbar("导航已设置！");
@@ -858,13 +757,8 @@ function NavigationDestination({
     if (searchInputEl) searchInputEl.value = "";
     searchFieldState.value = "";
     requestAnimationFrame(() => {
-      map?.flyTo({
-        center: startingCoordinates,
-        zoom: 18,
-        pitch: 45,
-        speed: 1,
-        curve: 1
-      });
+      const gloc = wgs84ToGcj02(startingCoordinates[0], startingCoordinates[1]);
+      map?.setZoomAndCenter(18, gloc);
     });
   }
   async function favoriteDestination() {

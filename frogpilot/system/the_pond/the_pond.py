@@ -49,8 +49,6 @@ KEYS = {
   "amap1":    ("amap1",    "", "AMapKey1",   "高德 JS Key",    32),
   "amap2":    ("amap2",    "", "AMapKey2",   "高德 JS Secret", 32),
   "amap_web": ("amap_web", "", "AMapWebKey", "高德 Web Key",   32),
-  "public":   ("public",   "pk.", "MapboxPublicKey", "Public key", 80),
-  "secret":   ("secret",   "sk.", "MapboxSecretKey", "Secret key", 80),
 }
 
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
@@ -140,6 +138,112 @@ def setup(app):
     params.remove("NavDestination")
     return {"message": "Destination cleared"}
 
+  import math
+
+  def wgs84_to_gcj02(lng, lat):
+    a = 6378245.0
+    ee = 0.00669342162296594323
+    pi = 3.1415926535897932384626
+
+    if lng < 72.004 or lng > 137.8347 or lat < 0.8293 or lat > 55.8271:
+      return lng, lat
+
+    def transform_lat(x, y):
+      ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * math.sqrt(abs(x))
+      ret += (20.0 * math.sin(6.0 * x * pi) + 20.0 * math.sin(2.0 * x * pi)) * 2.0 / 3.0
+      ret += (20.0 * math.sin(y * pi) + 40.0 * math.sin(y / 3.0 * pi)) * 2.0 / 3.0
+      ret += (160.0 * math.sin(y / 12.0 * pi) + 320 * math.sin(y * pi / 30.0)) * 2.0 / 3.0
+      return ret
+
+    def transform_lng(x, y):
+      ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * math.sqrt(abs(x))
+      ret += (20.0 * math.sin(6.0 * x * pi) + 20.0 * math.sin(2.0 * x * pi)) * 2.0 / 3.0
+      ret += (20.0 * math.sin(x * pi) + 40.0 * math.sin(x / 3.0 * pi)) * 2.0 / 3.0
+      ret += (150.0 * math.sin(x / 12.0 * pi) + 300.0 * math.sin(x / 30.0 * pi)) * 2.0 / 3.0
+      return ret
+
+    dlat = transform_lat(lng - 105.0, lat - 35.0)
+    dlng = transform_lng(lng - 105.0, lat - 35.0)
+    radlat = lat / 180.0 * pi
+    magic = math.sin(radlat)
+    magic = 1 - ee * magic * magic
+    sqrtmagic = math.sqrt(magic)
+    dlat = (dlat * 180.0) / ((a * (1 - ee)) / (magic * sqrtmagic) * pi)
+    dlng = (dlng * 180.0) / (a / sqrtmagic * math.cos(radlat) * pi)
+    
+    return lng + dlng, lat + dlat
+
+  def _amap_request(path, p):
+    web_key = params.get("AMapWebKey", encoding="utf8")
+    if not web_key:
+      return {"error": "AMapWebKey not set"}, 400
+    p["key"] = web_key
+    url = f"https://restapi.amap.com{path}"
+    try:
+      resp = requests.get(url, params=p, timeout=10)
+      return resp.json(), resp.status_code
+    except Exception as e:
+      return {"error": str(e)}, 500
+
+  @app.route("/api/geocode/forward", methods=["GET"])
+  def amap_forward_geocode():
+    q = request.args.get("q")
+    city = request.args.get("city", "")
+    if not q:
+      return {"error": "Missing q param"}, 400
+    return _amap_request("/v5/place/text", {"keywords": q, "region": city, "page_size": 20})
+
+  @app.route("/api/geocode/reverse", methods=["GET"])
+  def amap_reverse_geocode():
+    lng = request.args.get("lng")
+    lat = request.args.get("lat")
+    if not lng or not lat:
+      return {"error": "Missing lng/lat"}, 400
+    try:
+      glng, glat = wgs84_to_gcj02(float(lng), float(lat))
+      return _amap_request("/v3/geocode/regeo", {"location": f"{glng:.6f},{glat:.6f}"})
+    except ValueError:
+      return {"error": "Invalid lng/lat"}, 400
+
+  @app.route("/api/route", methods=["GET"])
+  def amap_route():
+    origin = request.args.get("origin")
+    destination = request.args.get("destination")
+    strategy = request.args.get("strategy", "32")
+    if not origin or not destination:
+      return {"error": "Missing origin/destination"}, 400
+    try:
+      o_lng, o_lat = map(float, origin.split(","))
+      d_lng, d_lat = map(float, destination.split(","))
+      go_lng, go_lat = wgs84_to_gcj02(o_lng, o_lat)
+      gd_lng, gd_lat = wgs84_to_gcj02(d_lng, d_lat)
+      return _amap_request("/v5/direction/driving", {
+        "origin": f"{go_lng:.6f},{go_lat:.6f}",
+        "destination": f"{gd_lng:.6f},{gd_lat:.6f}",
+        "strategy": strategy,
+        "show_fields": "polyline"
+      })
+    except ValueError:
+      return {"error": "Invalid coords"}, 400
+
+  @app.route("/api/params", methods=["GET"])
+  def get_params():
+    keys = request.args.get("keys", "").split(",")
+    res = {}
+    for k in keys:
+      if k:
+        res[k] = params.get(k, encoding="utf8") or ""
+    return res, 200
+
+  @app.route("/api/params", methods=["POST"])
+  def set_params():
+    data = request.get_json() or {}
+    allowed_keys = {"UseAMapRouting", "AMapRouteStrategy"}
+    for k, v in data.items():
+      if k in allowed_keys:
+        params.put(k, str(v))
+    return {"message": "Params updated"}, 200
+
   @app.route("/api/navigation", methods=["GET"])
   def navigation():
     last_position = json.loads(
@@ -158,8 +262,6 @@ def setup(app):
         "latitude": str(last_position["latitude"]),
         "longitude": str(last_position["longitude"])
       },
-      "mapboxPublic": params.get("MapboxPublicKey", encoding="utf8") or "",
-      "mapboxSecret": params.get("MapboxSecretKey", encoding="utf8") or "",
       "previousDestinations": params.get("ApiCache_NavDestinations", encoding="utf8") or "",
     }
 
@@ -1565,11 +1667,6 @@ def setup(app):
   def reset_toggle_values_to_stock():
     params.put_bool("DoToggleResetStock", True)
     HARDWARE.reboot()
-
-  @app.route("/mapbox-help/<path:filename>", methods=["GET"])
-  def serve_mapbox_help(filename):
-    return send_from_directory("/data/openpilot/frogpilot/navigation/navigation_training", filename)
-
   @app.route("/playground", methods=["GET"])
   def playground():
     return render_template("playground.html")

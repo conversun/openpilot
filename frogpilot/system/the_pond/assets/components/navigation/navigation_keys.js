@@ -3,12 +3,7 @@ import { Modal } from "/assets/components/modal.js";
 
 export function NavKeys() {
   const state = reactive({
-    initialMapboxComplete: false,
-    showMapboxHelp: false,
     visible: false,
-
-    imageVersion: 0,
-
     error: "",
     lastGroup: "",
     message: "",
@@ -17,15 +12,12 @@ export function NavKeys() {
     editA1: false, editA2: false, editAWeb: false,
     savedA1: false, savedA2: false, savedAWeb: false,
 
-    publicKey: "", secretKey: "",
-    editPublic: false, editSecret: false,
-    savedPublic: false, savedSecret: false,
+    useAMapRouting: false,
+    amapRouteStrategy: 32,
 
     showDeleteModal: false,
     keyToDelete: null,
   })
-
-  const bumpImageVersion = () => state.imageVersion++
 
   let clearTimer = null
   let fadeTimer = null
@@ -36,9 +28,7 @@ export function NavKeys() {
 
     state.error = type === "error" ? text : ""
     state.message = type === "message" ? text : ""
-
     state.lastGroup = group
-
     state.visible = true
 
     clearTimer = setTimeout(() => { state.message = "", state.error = "" }, 5000)
@@ -47,16 +37,6 @@ export function NavKeys() {
 
   const util = {
     prefix: (key, prefix) => key.startsWith(prefix) ? key : prefix ? prefix + key : key,
-
-    mask: (key) => {
-      if (!key) {
-        return ""
-      }
-
-      const prefix = ["pk.", "sk."].find(p => key.startsWith(p)) || ""
-      return prefix + "x".repeat(key.length - prefix.length)
-    },
-
     req: async (url, opts) => {
       const response = await fetch(url, opts)
       return { ok: response.ok, data: await response.json().catch(() => ({})) }
@@ -67,8 +47,6 @@ export function NavKeys() {
     amap1:    { prop: "amap1Key",   saved: "savedA1",     edit: "editA1",     prefix: "",    body: "amap1",    minLength: 32 },
     amap2:    { prop: "amap2Key",   saved: "savedA2",     edit: "editA2",     prefix: "",    body: "amap2",    minLength: 32 },
     amap_web: { prop: "amapWebKey", saved: "savedAWeb",   edit: "editAWeb",   prefix: "",    body: "amap_web", minLength: 32 },
-    public:   { prop: "publicKey",  saved: "savedPublic", edit: "editPublic", prefix: "pk.", body: "public",   minLength: 80 },
-    secret:   { prop: "secretKey",  saved: "savedSecret", edit: "editSecret", prefix: "sk.", body: "secret",   minLength: 80 }
   }
 
   const canSave = (kind) => {
@@ -90,8 +68,6 @@ export function NavKeys() {
       case "amap1":    return "高德 JS Key"
       case "amap2":    return "高德 JS Secret"
       case "amap_web": return "高德 Web Key"
-      case "public":   return "Mapbox 公钥"
-      case "secret":   return "Mapbox 私钥"
       default: return kind
     }
   }
@@ -100,41 +76,53 @@ export function NavKeys() {
     amap1:    "JS Key",
     amap2:    "JS Secret",
     amap_web: "Web Key",
-    public:   "公钥",
-    secret:   "私钥",
   }
 
   const api = {
     path: {
       key: "/api/navigation_key",
-      nav: "/api/navigation"
+      nav: "/api/navigation",
+      params: "/api/params"
     },
 
     load: async () => {
       const { ok, data } = await util.req(api.path.nav)
-      if (!ok) {
-        return showMessage("error", "密钥加载失败...", "")
+      if (ok) {
+        state.amap1Key = data.amap1Key ?? ""
+        state.amap2Key = data.amap2Key ?? ""
+        state.amapWebKey = data.amapWebKey ?? ""
+        state.savedA1 = !!state.amap1Key
+        state.savedA2 = !!state.amap2Key
+        state.savedAWeb = !!state.amapWebKey
+      } else {
+        showMessage("error", "密钥加载失败...", "")
       }
 
-      state.amap1Key = data.amap1Key ?? ""
-      state.amap2Key = data.amap2Key ?? ""
-      state.amapWebKey = data.amapWebKey ?? ""
-      state.savedA1 = !!state.amap1Key
-      state.savedA2 = !!state.amap2Key
-      state.savedAWeb = !!state.amapWebKey
+      const { ok: okParams, data: dataParams } = await util.req(api.path.params + "?keys=UseAMapRouting,AMapRouteStrategy")
+      if (okParams) {
+        state.useAMapRouting = dataParams.UseAMapRouting === "1"
+        state.amapRouteStrategy = parseInt(dataParams.AMapRouteStrategy) || 32
+      }
+    },
 
-      state.publicKey = data.mapboxPublic ?? ""
-      state.secretKey = data.mapboxSecret ?? ""
-      state.savedPublic = !!state.publicKey
-      state.savedSecret = !!state.secretKey
-
-      state.initialMapboxComplete = state.savedPublic && state.savedSecret
-
-      bumpImageVersion()
+    saveParams: async () => {
+      const { ok } = await util.req(api.path.params, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          UseAMapRouting: state.useAMapRouting ? "1" : "0",
+          AMapRouteStrategy: state.amapRouteStrategy.toString()
+        })
+      })
+      if (!ok) {
+        showMessage("error", "设置保存失败...", "options")
+      } else {
+        showMessage("message", "设置保存成功！", "options")
+      }
     },
 
     save: (kind) => async () => {
-      const group = kind.startsWith("amap") ? "amap" : "mapbox"
+      const group = "amap"
       const keyMeta = meta[kind]
       const value = util.prefix(state[keyMeta.prop].trim(), keyMeta.prefix)
 
@@ -169,10 +157,6 @@ export function NavKeys() {
         requestAnimationFrame(() => { input.value = state[keyMeta.prop] })
       }
 
-      if (group === "mapbox") {
-        bumpImageVersion()
-      }
-
       showMessage("message", data.message || "保存成功！", group)
     },
 
@@ -185,7 +169,7 @@ export function NavKeys() {
       const kind = state.keyToDelete;
       if (!kind) return;
 
-      const group = kind.startsWith("amap") ? "amap" : "mapbox"
+      const group = "amap"
       const keyMeta = meta[kind]
 
       const { ok, data } = await util.req(`${api.path.key}?type=${kind}`, {
@@ -203,11 +187,6 @@ export function NavKeys() {
         [keyMeta.prop]: ""
       })
 
-      if (group === "mapbox") {
-        state.initialMapboxComplete = false
-        bumpImageVersion()
-      }
-
       showMessage("message", data.message || "删除成功！", group)
     }
   }
@@ -215,18 +194,9 @@ export function NavKeys() {
   queueMicrotask(api.load)
 
   function renderGroup(title, kinds) {
-    const isMapbox = title === "Mapbox 密钥"
-
     return html`
       <div class="navkeys-group">
-        <div class="navkeys-title">
-          ${title}
-          ${isMapbox ? html`
-            <span class="navkeys-help-icon" @click="${() => state.showMapboxHelp = !state.showMapboxHelp}">
-              <i class="bi bi-question-circle-fill"></i>
-            </span>
-          ` : ""}
-        </div>
+        <div class="navkeys-title">${title}</div>
 
         ${kinds.map(kind => {
           const keyMeta = meta[kind]
@@ -260,30 +230,6 @@ export function NavKeys() {
             </div>
           `
         })}
-
-        ${() => {
-          if (isMapbox && state.showMapboxHelp) {
-            return html`
-              <div class="navkeys-help-img">
-                <img
-                  alt="Mapbox 密钥设置指南"
-                  src="${() => {
-                    const bothKeysSet = state.savedPublic && state.savedSecret
-
-                    let imageSource = "/mapbox-help/no_keys_set.png"
-                    if (bothKeysSet) {
-                      imageSource = state.initialMapboxComplete ? "/mapbox-help/setup_completed.png" : "/mapbox-help/both_keys_set.png"
-                    } else if (state.savedPublic) {
-                      imageSource = "/mapbox-help/public_key_set.png"
-                    }
-                    return `${imageSource}?v=${state.imageVersion}`
-                  }}"
-                />
-              </div>
-            `
-          }
-          return ""
-        }}
       </div>
     `
   }
@@ -312,8 +258,31 @@ export function NavKeys() {
         ${renderStatus("amap")}
       </div>
       <div class="navkeys-container">
-        ${renderGroup("Mapbox 密钥", ["public", "secret"])}
-        ${renderStatus("mapbox")}
+        <div class="navkeys-group">
+          <div class="navkeys-title">路线偏好</div>
+          <div style="margin-bottom: 15px; display: flex; align-items: center;">
+            <label class="navkeys-label" style="margin: 0; flex: 1;">使用高德路径规划</label>
+            <input type="checkbox" style="width: 24px; height: 24px;" checked="${() => state.useAMapRouting}" @change="${(e) => {
+              state.useAMapRouting = e.target.checked;
+              api.saveParams();
+            }}" />
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="navkeys-label">策略选择</label>
+            <select style="width: 100%; padding: 10px; border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);" value="${() => state.amapRouteStrategy}" @change="${(e) => {
+              state.amapRouteStrategy = parseInt(e.target.value);
+              api.saveParams();
+            }}">
+              <option value="32" selected="${() => state.amapRouteStrategy === 32}">32 - 默认 (推荐)</option>
+              <option value="33" selected="${() => state.amapRouteStrategy === 33}">33 - 躲避拥堵</option>
+              <option value="34" selected="${() => state.amapRouteStrategy === 34}">34 - 高速优先</option>
+              <option value="35" selected="${() => state.amapRouteStrategy === 35}">35 - 不走高速</option>
+              <option value="38" selected="${() => state.amapRouteStrategy === 38}">38 - 速度最快</option>
+              <option value="45" selected="${() => state.amapRouteStrategy === 45}">45 - 躲避拥堵 + 速度最快</option>
+            </select>
+          </div>
+        </div>
+        ${renderStatus("options")}
       </div>
     </div>
     ${() => state.showDeleteModal ? Modal({
