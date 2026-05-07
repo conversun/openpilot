@@ -201,7 +201,7 @@ class RouteEngine:
 
     try:
       if use_amap and amap_web_key:
-        from openpilot.selfdrive.navd.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
+        from openpilot.frogpilot.navigation.amap_route_adapter import convert_amap_to_mapbox, fetch_amap_route
         cloudlog.warning("Routing via AMap v5 driving API")
 
         # AMap doesn't natively use bearing for initial planning. Pass any waypoints from

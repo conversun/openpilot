@@ -15,7 +15,7 @@ import os
 
 import pytest
 
-from openpilot.selfdrive.navd.amap_route_adapter import (
+from openpilot.frogpilot.navigation.amap_route_adapter import (
   convert_amap_to_mapbox,
   fetch_amap_route,
 )
@@ -112,7 +112,7 @@ def test_maxspeed_annotation_shape(route):
 def test_unknown_actions_are_logged(route):
   """Surface any AMap navi.action strings we haven't mapped, so we can extend _ACTION_MAP."""
   raw, _ = route
-  from openpilot.selfdrive.navd.amap_route_adapter import _ACTION_MAP
+  from openpilot.frogpilot.navigation.amap_route_adapter import _ACTION_MAP
   unmapped: set[str] = set()
   for step in (raw.get("route") or {}).get("paths", [{}])[0].get("steps") or []:
     navi = step.get("navi") if isinstance(step.get("navi"), dict) else {}
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     b = s["bannerInstructions"][0]
     print(f"  [{i}] {s['distance']:>5.0f}m  {b['primary']['type']:<12} {b['primary']['modifier']:<10} {b['primary']['text']}")
 
-  from openpilot.selfdrive.navd.amap_route_adapter import _ACTION_MAP
+  from openpilot.frogpilot.navigation.amap_route_adapter import _ACTION_MAP
   unmapped = set()
   for step in (raw.get("route") or {}).get("paths", [{}])[0].get("steps") or []:
     navi = step.get("navi") if isinstance(step.get("navi"), dict) else {}

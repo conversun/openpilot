@@ -1,7 +1,7 @@
 """Tests for AMap (高德) v5 driving response → Mapbox-compatible adapter."""
 import pytest
 
-from openpilot.selfdrive.navd.amap_route_adapter import (
+from openpilot.frogpilot.navigation.amap_route_adapter import (
   action_to_maneuver,
   convert_amap_to_mapbox,
   gcj02_to_wgs84,

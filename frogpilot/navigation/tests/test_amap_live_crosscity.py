@@ -17,7 +17,7 @@ import os
 
 import pytest
 
-from openpilot.selfdrive.navd.amap_route_adapter import (
+from openpilot.frogpilot.navigation.amap_route_adapter import (
   convert_amap_to_mapbox,
   fetch_amap_route,
 )
@@ -112,7 +112,7 @@ def test_step_distance_sum_close_to_route_total(route):
 def test_unmapped_actions_surface(route):
   """Long route hits more action diversity; surface anything unmapped for follow-up."""
   raw, _ = route
-  from openpilot.selfdrive.navd.amap_route_adapter import _ACTION_MAP
+  from openpilot.frogpilot.navigation.amap_route_adapter import _ACTION_MAP
   unmapped: set[str] = set()
   for step in (raw.get("route") or {}).get("paths", [{}])[0].get("steps") or []:
     navi = step.get("navi") if isinstance(step.get("navi"), dict) else {}
