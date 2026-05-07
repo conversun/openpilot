@@ -48,7 +48,11 @@ KEYS = {
   #   - Web Key             → REST API at restapi.amap.com (route planning)
   "amap1":    ("amap1",    "", "AMapKey1",   "高德 JS Key",    32),
   "amap2":    ("amap2",    "", "AMapKey2",   "高德 JS Secret", 32),
-  "amap_web": ("amap_web", "", "AMapWebKey", "高德 Web Key",   32),
+  "amap_web": ("amap_web", "",    "AMapWebKey",      "高德 Web Key",   32),
+  # Mapbox keys remain managed here because mapsd / Qt fullscreen map / SLC mapbox-filler /
+  # navd Mapbox-fallback all still consume MapboxPublicKey + MapboxSecretKey at runtime.
+  "public":   ("public",   "pk.", "MapboxPublicKey", "Mapbox Public Key", 80),
+  "secret":   ("secret",   "sk.", "MapboxSecretKey", "Mapbox Secret Key", 80),
 }
 
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
@@ -285,6 +289,8 @@ def setup(app):
       "amap1Key": params.get("AMapKey1", encoding="utf8") or "",
       "amap2Key": params.get("AMapKey2", encoding="utf8") or "",
       "amapWebKey": params.get("AMapWebKey", encoding="utf8") or "",
+      "mapboxPublic": params.get("MapboxPublicKey", encoding="utf8") or "",
+      "mapboxSecret": params.get("MapboxSecretKey", encoding="utf8") or "",
       "useAMapRouting": params.get_bool("UseAMapRouting"),
       "destination": params.get("NavDestination", encoding="utf8") or "",
       "isMetric": params.get_bool("IsMetric"),

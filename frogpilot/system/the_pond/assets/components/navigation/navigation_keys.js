@@ -9,8 +9,11 @@ export function NavKeys() {
     message: "",
 
     amap1Key: "", amap2Key: "", amapWebKey: "",
+    mapboxPublic: "", mapboxSecret: "",
     editA1: false, editA2: false, editAWeb: false,
+    editPub: false, editSec: false,
     savedA1: false, savedA2: false, savedAWeb: false,
+    savedPub: false, savedSec: false,
 
     useAMapRouting: false,
     amapRouteStrategy: 32,
@@ -46,7 +49,9 @@ export function NavKeys() {
   const meta = {
     amap1:    { prop: "amap1Key",   saved: "savedA1",     edit: "editA1",     prefix: "",    body: "amap1",    minLength: 32 },
     amap2:    { prop: "amap2Key",   saved: "savedA2",     edit: "editA2",     prefix: "",    body: "amap2",    minLength: 32 },
-    amap_web: { prop: "amapWebKey", saved: "savedAWeb",   edit: "editAWeb",   prefix: "",    body: "amap_web", minLength: 32 },
+    amap_web: { prop: "amapWebKey",   saved: "savedAWeb", edit: "editAWeb", prefix: "",    body: "amap_web", minLength: 32 },
+    public:   { prop: "mapboxPublic", saved: "savedPub",  edit: "editPub",  prefix: "pk.", body: "public",   minLength: 80 },
+    secret:   { prop: "mapboxSecret", saved: "savedSec",  edit: "editSec",  prefix: "sk.", body: "secret",   minLength: 80 },
   }
 
   const canSave = (kind) => {
@@ -68,6 +73,8 @@ export function NavKeys() {
       case "amap1":    return "高德 JS Key"
       case "amap2":    return "高德 JS Secret"
       case "amap_web": return "高德 Web Key"
+      case "public":   return "Mapbox Public Key"
+      case "secret":   return "Mapbox Secret Key"
       default: return kind
     }
   }
@@ -76,6 +83,8 @@ export function NavKeys() {
     amap1:    "JS Key",
     amap2:    "JS Secret",
     amap_web: "Web Key",
+    public:   "Public Key",
+    secret:   "Secret Key",
   }
 
   const api = {
@@ -91,9 +100,13 @@ export function NavKeys() {
         state.amap1Key = data.amap1Key ?? ""
         state.amap2Key = data.amap2Key ?? ""
         state.amapWebKey = data.amapWebKey ?? ""
+        state.mapboxPublic = data.mapboxPublic ?? ""
+        state.mapboxSecret = data.mapboxSecret ?? ""
         state.savedA1 = !!state.amap1Key
         state.savedA2 = !!state.amap2Key
         state.savedAWeb = !!state.amapWebKey
+        state.savedPub = !!state.mapboxPublic
+        state.savedSec = !!state.mapboxSecret
       } else {
         showMessage("error", "密钥加载失败...", "")
       }
@@ -122,7 +135,7 @@ export function NavKeys() {
     },
 
     save: (kind) => async () => {
-      const group = "amap"
+      const group = kind === "public" || kind === "secret" ? "mapbox" : "amap"
       const keyMeta = meta[kind]
       const value = util.prefix(state[keyMeta.prop].trim(), keyMeta.prefix)
 
@@ -169,7 +182,7 @@ export function NavKeys() {
       const kind = state.keyToDelete;
       if (!kind) return;
 
-      const group = "amap"
+      const group = kind === "public" || kind === "secret" ? "mapbox" : "amap"
       const keyMeta = meta[kind]
 
       const { ok, data } = await util.req(`${api.path.key}?type=${kind}`, {
@@ -256,6 +269,10 @@ export function NavKeys() {
       <div class="navkeys-container">
         ${renderGroup("高德密钥", ["amap1", "amap2", "amap_web"])}
         ${renderStatus("amap")}
+      </div>
+      <div class="navkeys-container">
+        ${renderGroup("Mapbox 密钥", ["public", "secret"])}
+        ${renderStatus("mapbox")}
       </div>
       <div class="navkeys-container">
         <div class="navkeys-group">
