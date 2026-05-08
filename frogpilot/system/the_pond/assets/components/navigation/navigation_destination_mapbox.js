@@ -638,7 +638,10 @@ export function NavDestination() {
       return;
     }
     state.initialized = true;
-    mapboxgl.workerUrl = "/assets/vendor/mapbox-gl-csp-worker.js";
+    // mapbox-gl.js (regular bundle) auto-creates a Blob-URL worker on load,
+    // so workerUrl does not need to be set. The CSP-only build (mapbox-gl-csp.js)
+    // would require pairing with mapbox-gl-csp-worker.js, but The Pond serves no
+    // CSP and uses the regular bundle.
     mapboxgl.accessToken = state.mapboxPublic;
     map = new mapboxgl.Map({
       container,
