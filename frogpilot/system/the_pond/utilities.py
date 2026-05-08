@@ -7,6 +7,8 @@ import re
 import secrets
 import shutil
 import subprocess
+import tempfile
+import threading
 import time
 import uuid
 
@@ -43,6 +45,21 @@ XOR_KEY = "s8#pL3*Xj!aZ@dWq"
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
 MAX_VIDEO_CACHE_BYTES = 2 * 1024 * 1024 * 1024
+
+STALE_TEMP_AGE_SECONDS = 3600
+
+_VIDEO_CACHE_PRUNE_LOCK = threading.Lock()
+_VIDEO_CACHE_KEY_LOCKS: dict[str, threading.Lock] = {}
+_VIDEO_CACHE_KEY_LOCKS_GUARD = threading.Lock()
+
+
+def _video_cache_key_lock(file_hash):
+  with _VIDEO_CACHE_KEY_LOCKS_GUARD:
+    lock = _VIDEO_CACHE_KEY_LOCKS.get(file_hash)
+    if lock is None:
+      lock = threading.Lock()
+      _VIDEO_CACHE_KEY_LOCKS[file_hash] = lock
+    return lock
 
 def check_theme_components(theme_path):
   components = {
@@ -336,40 +353,50 @@ def encode_parameters(params_dict):
   encoded_data = base64.b64encode(obfuscated_data.encode("utf-8")).decode("utf-8")
   return encoded_data
 
-def prune_video_cache(reserve_bytes=0):
+def prune_video_cache():
   VIDEO_CACHE_PATH.mkdir(exist_ok=True)
 
-  entries = []
-  total = 0
-  for f in VIDEO_CACHE_PATH.glob("*.mp4"):
-    try:
-      st = f.stat()
-    except OSError:
-      continue
-    entries.append((st.st_atime, st.st_size, f))
-    total += st.st_size
-
-  if shutil.disk_usage(VIDEO_CACHE_PATH).free < 500 * 1024 * 1024:
-    for _, _, f in entries:
+  with _VIDEO_CACHE_PRUNE_LOCK:
+    now = time.time()
+    for stale in VIDEO_CACHE_PATH.iterdir():
+      if stale.suffix not in (".txt", ".tmp"):
+        continue
       try:
-        f.unlink()
+        if now - stale.stat().st_mtime > STALE_TEMP_AGE_SECONDS:
+          stale.unlink()
       except OSError:
         pass
-    return
 
-  budget = max(0, MAX_VIDEO_CACHE_BYTES - reserve_bytes)
-  if total <= budget:
-    return
+    entries = []
+    total = 0
+    for f in VIDEO_CACHE_PATH.glob("*.mp4"):
+      try:
+        st = f.stat()
+      except OSError:
+        continue
+      entries.append((st.st_mtime, st.st_size, f))
+      total += st.st_size
 
-  entries.sort(key=lambda e: e[0])
-  for _, size, f in entries:
-    if total <= budget:
-      break
-    try:
-      f.unlink()
-      total -= size
-    except OSError:
-      pass
+    if shutil.disk_usage(VIDEO_CACHE_PATH).free < 500 * 1024 * 1024:
+      for _, _, f in entries:
+        try:
+          f.unlink()
+        except OSError:
+          pass
+      return
+
+    if total <= MAX_VIDEO_CACHE_BYTES:
+      return
+
+    entries.sort(key=lambda e: e[0])
+    for _, size, f in entries:
+      if total <= MAX_VIDEO_CACHE_BYTES:
+        break
+      try:
+        f.unlink()
+        total -= size
+      except OSError:
+        pass
 
 def ffmpeg_concat_segments_to_mp4(input_files, cache_key=None):
   if not input_files:
@@ -383,38 +410,49 @@ def ffmpeg_concat_segments_to_mp4(input_files, cache_key=None):
   file_hash = hashlib.md5(key_str.encode()).hexdigest()
   cache_path = VIDEO_CACHE_PATH / f"{file_hash}.mp4"
 
-  if cache_path.exists() and all(cache_path.stat().st_mtime > Path(f).stat().st_mtime for f in input_files):
-    return open(cache_path, "rb")
+  with _video_cache_key_lock(file_hash):
+    if cache_path.exists() and all(cache_path.stat().st_mtime > Path(f).stat().st_mtime for f in input_files):
+      try:
+        os.utime(cache_path, None)
+      except OSError:
+        pass
+      return open(cache_path, "rb")
 
-  prune_video_cache()
+    prune_video_cache()
 
-  list_file = VIDEO_CACHE_PATH / f"{file_hash}.txt"
-  with open(list_file, "w") as f:
-    for seg in input_files:
-      f.write(f"file '{Path(seg)}'\n")
+    fd, list_tmp = tempfile.mkstemp(dir=VIDEO_CACHE_PATH, prefix=f"{file_hash}_", suffix=".txt")
+    os.close(fd)
+    list_file = Path(list_tmp)
+    fd, out_tmp = tempfile.mkstemp(dir=VIDEO_CACHE_PATH, prefix=f"{file_hash}_", suffix=".mp4.tmp")
+    os.close(fd)
+    out_path = Path(out_tmp)
 
-  try:
-    subprocess.run(
-      ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
-       "-i", str(list_file), "-c", "copy", "-movflags", "faststart", "-y", str(cache_path)],
-      check=True
-    )
-  except subprocess.CalledProcessError:
     try:
-      subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
-         "-i", str(list_file), "-c:v", "libx264", "-movflags", "faststart", "-y", str(cache_path)],
-        check=True
-      )
-    except subprocess.CalledProcessError:
-      if cache_path.exists():
-        cache_path.unlink()
-      raise ValueError(f"Cannot process concatenated video segments: {input_files}")
-  finally:
-    if list_file.exists():
-      list_file.unlink()
+      with open(list_file, "w") as f:
+        for seg in input_files:
+          f.write(f"file '{Path(seg)}'\n")
 
-  return open(cache_path, "rb")
+      try:
+        subprocess.run(
+          ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
+           "-i", str(list_file), "-c", "copy", "-movflags", "faststart", "-y", str(out_path)],
+          check=True
+        )
+      except subprocess.CalledProcessError:
+        subprocess.run(
+          ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
+           "-i", str(list_file), "-c:v", "libx264", "-movflags", "faststart", "-y", str(out_path)],
+          check=True
+        )
+
+      with _VIDEO_CACHE_PRUNE_LOCK:
+        os.replace(out_path, cache_path)
+        return open(cache_path, "rb")
+    except subprocess.CalledProcessError:
+      raise ValueError(f"Cannot process concatenated video segments: {input_files}")
+    finally:
+      list_file.unlink(missing_ok=True)
+      out_path.unlink(missing_ok=True)
 
 def ffmpeg_mp4_wrap_process_builder(filename):
   input_path = Path(filename)
@@ -434,22 +472,33 @@ def ffmpeg_mp4_wrap_process_builder(filename):
   file_hash = hashlib.md5(str(input_path).encode()).hexdigest()
   cache_path = VIDEO_CACHE_PATH / f"{file_hash}.mp4"
 
-  if cache_path.exists() and cache_path.stat().st_mtime > input_path.stat().st_mtime:
-    return open(cache_path, "rb")
+  with _video_cache_key_lock(file_hash):
+    if cache_path.exists() and cache_path.stat().st_mtime > input_path.stat().st_mtime:
+      try:
+        os.utime(cache_path, None)
+      except OSError:
+        pass
+      return open(cache_path, "rb")
 
-  prune_video_cache()
+    prune_video_cache()
 
-  try:
-    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(input_path), "-c", "copy", "-movflags", "faststart", "-y", str(cache_path)], check=True)
-  except subprocess.CalledProcessError:
+    fd, out_tmp = tempfile.mkstemp(dir=VIDEO_CACHE_PATH, prefix=f"{file_hash}_", suffix=".mp4.tmp")
+    os.close(fd)
+    out_path = Path(out_tmp)
+
     try:
-      subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(input_path), "-c:v", "libx264", "-movflags", "faststart", "-y", str(cache_path)], check=True)
-    except subprocess.CalledProcessError:
-      if cache_path.exists():
-        cache_path.unlink()
-      raise ValueError(f"Cannot process video file: {input_path}")
+      try:
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(input_path), "-c", "copy", "-movflags", "faststart", "-y", str(out_path)], check=True)
+      except subprocess.CalledProcessError:
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(input_path), "-c:v", "libx264", "-movflags", "faststart", "-y", str(out_path)], check=True)
 
-  return open(cache_path, "rb")
+      with _VIDEO_CACHE_PRUNE_LOCK:
+        os.replace(out_path, cache_path)
+        return open(cache_path, "rb")
+    except subprocess.CalledProcessError:
+      raise ValueError(f"Cannot process video file: {input_path}")
+    finally:
+      out_path.unlink(missing_ok=True)
 
 def format_git_date(raw_date: str):
   date_object = datetime.strptime(raw_date.split()[1], "%Y-%m-%d")
