@@ -6,7 +6,8 @@
   flex-wrap: wrap;
   font-size: var(--font-size-xs);
   gap: var(--gap-xs);
-  margin: 0 calc(-1 * var(--padding-lg)) var(--margin-base);
+  /* No bottom margin: pages with absolute-positioned content (navigation map) sit flush below this bar. */
+  margin: 0 calc(-1 * var(--padding-lg)) 0;
   padding: var(--padding-xs) var(--padding-lg);
   position: sticky;
   top: 0;
@@ -55,7 +56,7 @@
 
 @media only screen and (max-width: 768px) and (orientation: portrait) {
   .status-bar {
-    margin: 0 -1rem var(--margin-base);
+    margin: 0 -1rem 0;
     padding: var(--padding-xs) 1rem;
   }
 }
