@@ -342,6 +342,23 @@ def create_theme(form_data, files, temporary=False):
 
   return theme_path, None
 
+def cleanup_stale_theme_temp_dirs(keep_path):
+  tmp_root = Path("/tmp")
+  if not tmp_root.exists():
+    return
+  for candidate in tmp_root.iterdir():
+    try:
+      if not candidate.is_dir() or candidate == keep_path:
+        continue
+      has_marker = any(
+        child.is_dir() and child.name.endswith("-user_created")
+        for child in candidate.iterdir()
+      )
+      if has_marker:
+        shutil.rmtree(candidate, ignore_errors=True)
+    except OSError:
+      continue
+
 def decode_parameters(encoded_string):
   obfuscated_data = base64.b64decode(encoded_string.encode("utf-8")).decode("utf-8")
   decrypted_data = xor_encrypt_decrypt(obfuscated_data, XOR_KEY)

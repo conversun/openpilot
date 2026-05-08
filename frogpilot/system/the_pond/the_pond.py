@@ -1151,6 +1151,8 @@ def setup(app):
         delete_file(destination_file)
         destination_file.symlink_to(file)
 
+    utilities.cleanup_stale_theme_temp_dirs(temp_path.parent)
+
     params.put_bool("PersonalizeOpenpilot", True)
     params_memory.put_bool("UseActiveTheme", True)
 
