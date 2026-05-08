@@ -46,6 +46,8 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 
 MAX_VIDEO_CACHE_BYTES = 2 * 1024 * 1024 * 1024
 
+THEME_TEMP_MARKER = ".the_pond_theme_tmp"
+
 STALE_TEMP_AGE_SECONDS = 6 * 3600
 
 _VIDEO_CACHE_PRUNE_LOCK = threading.Lock()
@@ -143,6 +145,8 @@ def create_theme(form_data, files, temporary=False):
   theme_path = (base_path / f"{sane_theme_name}-user_created") if base_path else None
   if theme_path:
     theme_path.mkdir(parents=True, exist_ok=True)
+    if temporary:
+      (base_path / THEME_TEMP_MARKER).touch()
 
   if save_checklist.get("colors"):
     (theme_path / "colors").mkdir(exist_ok=True)
@@ -350,12 +354,9 @@ def cleanup_stale_theme_temp_dirs(keep_path):
     try:
       if not candidate.is_dir() or candidate == keep_path:
         continue
-      has_marker = any(
-        child.is_dir() and child.name.endswith("-user_created")
-        for child in candidate.iterdir()
-      )
-      if has_marker:
-        shutil.rmtree(candidate, ignore_errors=True)
+      if not (candidate / THEME_TEMP_MARKER).exists():
+        continue
+      shutil.rmtree(candidate, ignore_errors=True)
     except OSError:
       continue
 

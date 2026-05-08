@@ -18,6 +18,7 @@ import shutil
 import signal
 import subprocess
 import time
+import threading
 import traceback
 
 from cereal import car, messaging
@@ -41,6 +42,8 @@ FOOTAGE_PATHS = [
   Paths.log_root(konik=True, raw=True),
   Paths.log_root(raw=True),
 ]
+
+_THEME_APPLY_LOCK = threading.Lock()
 
 KEYS = {
   # AMap (高德) exposes two key types that are not interchangeable:
@@ -1084,82 +1087,83 @@ def setup(app):
 
   @app.route("/api/themes/apply", methods=["POST"])
   def apply_theme():
-    form_data = request.form.to_dict(flat=True)
-    files = request.files
+    with _THEME_APPLY_LOCK:
+      form_data = request.form.to_dict(flat=True)
+      files = request.files
 
-    if not form_data.get("themeName"):
-      form_data["themeName"] = f"tmp_{secrets.token_hex(8)}"
+      if not form_data.get("themeName"):
+        form_data["themeName"] = f"tmp_{secrets.token_hex(8)}"
 
-    temp_path, error = utilities.create_theme(form_data, files, temporary=True)
-    if error:
-      return {"error": error}, 400
+      temp_path, error = utilities.create_theme(form_data, files, temporary=True)
+      if error:
+        return {"error": error}, 400
 
-    save_checklist = json.loads(form_data.get("saveChecklist", "{}"))
+      save_checklist = json.loads(form_data.get("saveChecklist", "{}"))
 
-    if save_checklist.get("colors"):
-      asset_location = temp_path / "colors"
-      save_location = ACTIVE_THEME_PATH / "colors"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("colors"):
+        asset_location = temp_path / "colors"
+        save_location = ACTIVE_THEME_PATH / "colors"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("distance_icons"):
-      asset_location = temp_path / "distance_icons"
-      save_location = ACTIVE_THEME_PATH / "distance_icons"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("distance_icons"):
+        asset_location = temp_path / "distance_icons"
+        save_location = ACTIVE_THEME_PATH / "distance_icons"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("icons"):
-      asset_location = temp_path / "icons"
-      save_location = ACTIVE_THEME_PATH / "icons"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("icons"):
+        asset_location = temp_path / "icons"
+        save_location = ACTIVE_THEME_PATH / "icons"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("sounds"):
-      asset_location = temp_path / "sounds"
-      save_location = ACTIVE_THEME_PATH / "sounds"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("sounds"):
+        asset_location = temp_path / "sounds"
+        save_location = ACTIVE_THEME_PATH / "sounds"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    if save_checklist.get("turn_signals"):
-      asset_location = temp_path / "signals"
-      save_location = ACTIVE_THEME_PATH / "signals"
-      if save_location.exists() or save_location.is_symlink():
-        delete_file(save_location)
-      if asset_location.exists():
-        save_location.parent.mkdir(parents=True, exist_ok=True)
-        save_location.symlink_to(asset_location, target_is_directory=True)
+      if save_checklist.get("turn_signals"):
+        asset_location = temp_path / "signals"
+        save_location = ACTIVE_THEME_PATH / "signals"
+        if save_location.exists() or save_location.is_symlink():
+          delete_file(save_location)
+        if asset_location.exists():
+          save_location.parent.mkdir(parents=True, exist_ok=True)
+          save_location.symlink_to(asset_location, target_is_directory=True)
 
-    wheel_location = temp_path / "WheelIcon"
-    wheel_save_location = ACTIVE_THEME_PATH / "steering_wheel"
-    if wheel_location.exists():
-      if wheel_save_location.exists():
-        delete_file(wheel_save_location)
+      wheel_location = temp_path / "WheelIcon"
+      wheel_save_location = ACTIVE_THEME_PATH / "steering_wheel"
+      if wheel_location.exists():
+        if wheel_save_location.exists():
+          delete_file(wheel_save_location)
 
-      wheel_save_location.mkdir(parents=True, exist_ok=True)
-      for file in wheel_location.iterdir():
-        destination_file = wheel_save_location / file.name
-        delete_file(destination_file)
-        destination_file.symlink_to(file)
+        wheel_save_location.mkdir(parents=True, exist_ok=True)
+        for file in wheel_location.iterdir():
+          destination_file = wheel_save_location / file.name
+          delete_file(destination_file)
+          destination_file.symlink_to(file)
 
-    utilities.cleanup_stale_theme_temp_dirs(temp_path.parent)
+      utilities.cleanup_stale_theme_temp_dirs(temp_path.parent)
 
-    params.put_bool("PersonalizeOpenpilot", True)
-    params_memory.put_bool("UseActiveTheme", True)
+      params.put_bool("PersonalizeOpenpilot", True)
+      params_memory.put_bool("UseActiveTheme", True)
 
-    update_frogpilot_toggles()
-    return {"message": "Theme applied successfully!"}, 200
+      update_frogpilot_toggles()
+      return {"message": "Theme applied successfully!"}, 200
 
   @app.route("/api/themes/asset/<path:theme>/<path:asset_path>")
   def get_theme_asset(theme, asset_path):
