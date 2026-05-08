@@ -9,7 +9,8 @@
     <link rel="manifest" href="/assets/manifest.json">
     <link rel="shortcut icon" href="/assets/images/favicon.ico">
     {% if map_provider == "mapbox" %}
-    <link rel="stylesheet" href="/assets/vendor/mapbox-gl.css">
+    <link rel="stylesheet" href="/assets/vendor/mapbox-gl.css"
+          integrity="sha384-EP/H7vnAWQ5LW9GnEKFrWdLNFs5Ar50IJgtlPCBzA/mZRKZrR+/rMG5kXl5QNyCp">
     {% endif %}
 
     <meta name="map-provider" content="{{ map_provider }}">
@@ -45,7 +46,8 @@
     <script src="https://webapi.amap.com/loader.js"></script>
     {% endif %}
     {% if map_provider == "mapbox" %}
-    <script src="/assets/vendor/mapbox-gl.js"></script>
+    <script src="/assets/vendor/mapbox-gl.js"
+            integrity="sha384-t36UwPvJMncroUlXitN3c5+NQnjD2N13wqI3fgAe/JWWczaEZ8cp/Flwh1m/sm8v"></script>
     {% endif %}
 
 
