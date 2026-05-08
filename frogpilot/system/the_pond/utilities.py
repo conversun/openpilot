@@ -467,7 +467,7 @@ def get_drive_stats():
   frogpilot_stats = json.loads(params.get("FrogPilotStats") or "{}")
 
   is_metric = params.get_bool("IsMetric")
-  unit = "kilometers" if is_metric else "miles"
+  unit = "公里" if is_metric else "英里"
 
   def process(timeframe):
     data = stats.get(timeframe, {})
