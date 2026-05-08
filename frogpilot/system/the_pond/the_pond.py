@@ -342,7 +342,8 @@ def setup(app):
   def set_params():
     data = request.get_json() or {}
     allowed_strategies = {"32", "33", "34", "35", "38", "45"}
-    allowed_keys = {"UseAMapRouting", "AMapRouteStrategy"}
+    allowed_providers = {"amap", "mapbox"}
+    allowed_keys = {"UseAMapRouting", "AMapRouteStrategy", "MapProvider"}
     for k, v in data.items():
       if k not in allowed_keys:
         continue
@@ -351,6 +352,8 @@ def setup(app):
         return {"error": f"AMapRouteStrategy must be one of {sorted(allowed_strategies)}"}, 400
       if k == "UseAMapRouting" and sv not in {"0", "1"}:
         return {"error": "UseAMapRouting must be '0' or '1'"}, 400
+      if k == "MapProvider" and sv not in allowed_providers:
+        return {"error": f"MapProvider must be one of {sorted(allowed_providers)}"}, 400
       params.put(k, sv)
     return {"message": "Params updated"}, 200
 

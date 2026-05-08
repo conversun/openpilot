@@ -407,6 +407,7 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"MapDeceleration", PERSISTENT},
     {"MapdLogLevel", CLEAR_ON_MANAGER_START},
     {"MapGears", PERSISTENT},
+    {"MapProvider", PERSISTENT},
     {"MapsSelected", PERSISTENT},
     {"MapSpeedLimit", CLEAR_ON_MANAGER_START},
     {"MapStyle", PERSISTENT},

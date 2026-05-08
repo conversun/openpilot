@@ -17,6 +17,7 @@ export function NavKeys() {
 
     useAMapRouting: false,
     amapRouteStrategy: 32,
+    mapProvider: "amap",
 
     showDeleteModal: false,
     keyToDelete: null,
@@ -115,10 +116,12 @@ export function NavKeys() {
         showMessage("error", "密钥加载失败...", "")
       }
 
-      const { ok: okParams, data: dataParams } = await util.req(api.path.params + "?keys=UseAMapRouting,AMapRouteStrategy")
+      const { ok: okParams, data: dataParams } = await util.req(api.path.params + "?keys=UseAMapRouting,AMapRouteStrategy,MapProvider")
       if (okParams) {
         state.useAMapRouting = dataParams.UseAMapRouting === "1"
         state.amapRouteStrategy = parseInt(dataParams.AMapRouteStrategy) || 32
+        state.mapProvider = dataParams.MapProvider === "mapbox" ? "mapbox" : "amap"
+        try { localStorage.setItem("MapProvider", state.mapProvider) } catch (_) {}
       }
     },
 
@@ -128,7 +131,8 @@ export function NavKeys() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           UseAMapRouting: state.useAMapRouting ? "1" : "0",
-          AMapRouteStrategy: state.amapRouteStrategy.toString()
+          AMapRouteStrategy: state.amapRouteStrategy.toString(),
+          MapProvider: state.mapProvider
         })
       })
       if (!ok) {
@@ -306,6 +310,36 @@ export function NavKeys() {
       </div>
       <div class="navkeys-container">
         <div class="navkeys-group">
+          <div class="navkeys-title">地图显示</div>
+          <div class="strategy-section">
+            <label class="navkeys-label">页面地图提供商</label>
+            <div class="strategy-list">
+              ${[
+                ["amap",   "高德",     "中国大陆推荐"],
+                ["mapbox", "Mapbox", "HK / 非 GFW 网络"],
+              ].map(([code, label, hint]) => html`
+                <button type="button"
+                        class="${() => `strategy-option ${state.mapProvider === code ? "selected" : ""}`}"
+                        @click="${() => {
+                          if (state.mapProvider === code) return;
+                          state.mapProvider = code;
+                          try { localStorage.setItem("MapProvider", code) } catch (_) {}
+                          api.saveParams();
+                        }}">
+                  <span class="strategy-code">${code === "amap" ? "高德" : "MB"}</span>
+                  <span class="strategy-label">${label}${hint ? html`<span class="strategy-hint">${hint}</span>` : ""}</span>
+                  ${() => state.mapProvider === code ? html`<i class="bi bi-check-lg strategy-check"></i>` : ""}
+                </button>
+              `)}
+            </div>
+          </div>
+          <div class="navkeys-hint" style="margin-top:8px;font-size:0.85em;opacity:0.7;">
+            切换后访问「设置目的地」页面生效。Mapbox 需要 Public Key 且不能被 GFW 拦截。
+          </div>
+        </div>
+      </div>
+      <div class="navkeys-container">
+        <div class="navkeys-group">
           <div class="navkeys-title">路线偏好</div>
           <div class="strategy-toggle-row">
             <label class="navkeys-label strategy-toggle-label">使用高德路径规划</label>
@@ -339,7 +373,6 @@ export function NavKeys() {
             </div>
         </div>
         ${renderStatus("options")}
-      </div>
     </div>
     ${() => state.showDeleteModal ? Modal({
       title: "确认删除",

@@ -101,6 +101,15 @@ export function StatusBar() {
           out.push(badge("dim", "SLC Mapbox 关", "SLCMapboxFiller=0"));
         }
 
+        // 5. The Pond 页面地图提供商 (frontend-only setting; navd routing is independent)
+        let mp = "amap";
+        try { mp = localStorage.getItem("MapProvider") || "amap"; } catch (_) {}
+        if (mp === "mapbox") {
+          out.push(badge("ok", "页面地图 Mapbox", "MapProvider=mapbox — Web UI 使用 Mapbox GL JS 渲染"));
+        } else {
+          out.push(badge("dim", "页面地图 高德", "MapProvider=amap — Web UI 使用 高德 JS API 渲染"));
+        }
+
         return out;
       }}
     </div>
