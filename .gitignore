@@ -89,3 +89,5 @@ Pipfile
 .sisyphus/
 
 .playwright-mcp/
+
+ui-tour/
