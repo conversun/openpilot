@@ -817,6 +817,8 @@ def setup(app):
   @app.route("/api/screen_recordings/list", methods=["GET"])
   def list_screen_recordings():
     def generate():
+      utilities.prune_screen_recordings_under_pressure()
+
       recordings = sorted(
         [recording for recording in SCREEN_RECORDINGS_PATH.glob("*.mp4") if not Path(f"{recording}.lock").exists()],
         key=lambda p: p.stat().st_mtime,

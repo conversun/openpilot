@@ -25,7 +25,7 @@ from openpilot.system.loggerd.deleter import PRESERVE_ATTR_NAME, PRESERVE_ATTR_V
 from openpilot.system.loggerd.uploader import listdir_by_creation
 from openpilot.tools.lib.route import SegmentName
 
-from openpilot.frogpilot.common.frogpilot_variables import THEME_SAVE_PATH, VIDEO_CACHE_PATH, params
+from openpilot.frogpilot.common.frogpilot_variables import SCREEN_RECORDINGS_PATH, THEME_SAVE_PATH, VIDEO_CACHE_PATH, params
 from openpilot.frogpilot.assets.theme_manager import HOLIDAY_THEME_PATH
 
 LOG_CANDIDATES = [
@@ -358,6 +358,34 @@ def cleanup_stale_theme_temp_dirs(keep_path):
         shutil.rmtree(candidate, ignore_errors=True)
     except OSError:
       continue
+
+
+def prune_screen_recordings_under_pressure(target_free_bytes=2 * 1024 * 1024 * 1024,
+                                            trigger_free_bytes=1024 * 1024 * 1024):
+  if not SCREEN_RECORDINGS_PATH.exists():
+    return
+  if shutil.disk_usage(SCREEN_RECORDINGS_PATH).free >= trigger_free_bytes:
+    return
+
+  recordings = []
+  for f in SCREEN_RECORDINGS_PATH.glob("*.mp4"):
+    try:
+      st = f.stat()
+    except OSError:
+      continue
+    recordings.append((st.st_mtime, f))
+  recordings.sort(key=lambda r: r[0])
+
+  for _, mp4 in recordings:
+    if shutil.disk_usage(SCREEN_RECORDINGS_PATH).free >= target_free_bytes:
+      break
+    try:
+      mp4.unlink()
+      for ext in (".png", ".gif"):
+        thumb = mp4.with_suffix(ext)
+        thumb.unlink(missing_ok=True)
+    except OSError:
+      pass
 
 def decode_parameters(encoded_string):
   obfuscated_data = base64.b64decode(encoded_string.encode("utf-8")).decode("utf-8")
