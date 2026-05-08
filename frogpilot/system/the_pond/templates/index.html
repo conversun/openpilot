@@ -8,7 +8,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png">
     <link rel="manifest" href="/assets/manifest.json">
     <link rel="shortcut icon" href="/assets/images/favicon.ico">
+    {% if map_provider == "mapbox" %}
     <link rel="stylesheet" href="/assets/vendor/mapbox-gl.css">
+    {% endif %}
+
+    <meta name="map-provider" content="{{ map_provider }}">
 
     <meta name="theme-color" content="#4285f4" />
 
@@ -37,8 +41,12 @@
     <script type="module" src="/assets/components/router.js"></script>
     <script src="/assets/js/snackbar.js"></script>
 
+    {% if map_provider == "amap" %}
     <script src="https://webapi.amap.com/loader.js"></script>
+    {% endif %}
+    {% if map_provider == "mapbox" %}
     <script src="/assets/vendor/mapbox-gl.js"></script>
+    {% endif %}
 
 
     <title>The Pond 控制台</title>

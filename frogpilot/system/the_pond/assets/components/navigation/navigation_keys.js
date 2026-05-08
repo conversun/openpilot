@@ -121,11 +121,10 @@ export function NavKeys() {
         state.useAMapRouting = dataParams.UseAMapRouting === "1"
         state.amapRouteStrategy = parseInt(dataParams.AMapRouteStrategy) || 32
         state.mapProvider = dataParams.MapProvider === "mapbox" ? "mapbox" : "amap"
-        try { localStorage.setItem("MapProvider", state.mapProvider) } catch (_) {}
       }
     },
 
-    saveParams: async () => {
+    saveParams: async ({ silent = false } = {}) => {
       const { ok } = await util.req(api.path.params, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,9 +136,12 @@ export function NavKeys() {
       })
       if (!ok) {
         showMessage("error", "设置保存失败...", "options")
-      } else {
+      } else if (!silent) {
+        // Caller can pass {silent: true} when it'll show its own follow-up
+        // message (e.g. the MapProvider toggle that reloads the page).
         showMessage("message", "设置保存成功！", "options")
       }
+      return ok
     },
 
     save: (kind) => async () => {
@@ -320,11 +322,21 @@ export function NavKeys() {
               ].map(([code, label, hint]) => html`
                 <button type="button"
                         class="${() => `strategy-option ${state.mapProvider === code ? "selected" : ""}`}"
-                        @click="${() => {
+                        @click="${async () => {
                           if (state.mapProvider === code) return;
+                          // Optimistic UI; revert if backend POST fails.
+                          const previous = state.mapProvider;
                           state.mapProvider = code;
-                          try { localStorage.setItem("MapProvider", code) } catch (_) {}
-                          api.saveParams();
+                          const ok = await api.saveParams({ silent: true });
+                          if (!ok) {
+                            state.mapProvider = previous;
+                            return;
+                          }
+                          // Reload so index.html re-renders with the new provider's vendor
+                          // scripts. Hot-swapping isn't supported — the unused module would
+                          // reference an absent global (mapboxgl or AMap).
+                          showMessage("message", "已切换地图提供商，正在重新加载...", "options");
+                          setTimeout(() => window.location.reload(), 400);
                         }}">
                   <span class="strategy-code">${code === "amap" ? "高德" : "MB"}</span>
                   <span class="strategy-label">${label}${hint ? html`<span class="strategy-hint">${hint}</span>` : ""}</span>

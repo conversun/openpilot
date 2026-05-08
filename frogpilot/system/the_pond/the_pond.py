@@ -58,13 +58,20 @@ KEYS = {
 TMUX_LOGS_PATH = Path("/data/tmux_logs")
 
 def setup(app):
+  def _render_index():
+    # MapProvider is baked into index.html so the template only emits the vendor
+    # scripts (mapbox-gl.js OR webapi.amap.com loader) for the active provider.
+    # Switching providers requires a reload (handled in navigation_keys.js).
+    return render_template("index.html",
+                           map_provider=params.get("MapProvider", encoding="utf8") or "amap")
+
   @app.errorhandler(404)
   def not_found(_):
-    return render_template("index.html")
+    return _render_index()
 
   @app.route("/", methods=["GET"])
   def index():
-    return render_template("index.html")
+    return _render_index()
 
   @app.route("/api/doors_available", methods=["GET"])
   def doors_available():
@@ -262,6 +269,7 @@ def setup(app):
         "amap": fa.result(),
         "mapbox": fm.result(),
         "slc_filler": params.get_bool("SLCMapboxFiller"),
+        "map_provider": params.get("MapProvider", encoding="utf8") or "amap",
         "ts": time.time(),
       }), 200
 
