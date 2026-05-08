@@ -127,7 +127,7 @@ class RouteEngine:
     # take its norm as a scalar uncertainty proxy. In a tunnel this grows over time as
     # the Kalman dead-reckons, well before gpsOK flips False (which lags 2s after last fix).
     pos_std = location.positionECEF.std
-    if pos_std is not None and len(pos_std) >= 3 and all(math.isfinite(s) for s in pos_std[:3]):
+    if pos_std is not None and len(pos_std) >= 3 and all(math.isfinite(pos_std[i]) for i in range(3)):
       self.position_std_norm = math.sqrt(pos_std[0] ** 2 + pos_std[1] ** 2 + pos_std[2] ** 2)
     else:
       self.position_std_norm = float("inf")  # treat unknown as bad
