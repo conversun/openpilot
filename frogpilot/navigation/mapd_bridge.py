@@ -15,11 +15,20 @@ Lifecycle:
   - Started by manager.py via system/manager/process_config.py (PythonProcess).
   - Polls OSMDownloadLocations once per second; on change publishes mapdIn cereal
     (download or cancel).
-  - Subscribes to mapdExtendedOut from the v2 binary and mirrors its progress info
-    back into the OSMDownloadProgress param so the existing FrogPilot maps panel,
-    which still parses the v1 JSON format, keeps reporting accurate progress.
+  - Subscribes to mapdExtendedOut and mirrors progress into OSMDownloadProgress
+    so the existing FrogPilot maps panel (which still parses the v1 JSON shape)
+    keeps reporting accurate progress.
+
+Reliability:
+  - PubMaster needs a moment to establish its zmq sockets; if we publish before
+    that, the message is dropped silently. We sleep after construction.
+  - mapd v2.0.6 occasionally deadlocks after a cancel→retrigger sequence: the
+    daemon reports active=True but never opens a TCP connection. We watchdog
+    each pending publish, retry once at +5s, and pkill mapd at +30s so manager
+    can respawn it fresh.
 """
 import json
+import os
 import time
 
 import cereal.messaging as messaging
@@ -28,6 +37,11 @@ from openpilot.common.params import Params
 from openpilot.frogpilot.common.frogpilot_variables import params_memory
 
 POLL_INTERVAL_S = 1.0
+PUBMASTER_SETTLE_S = 1.0          # let zmq sockets bind before first publish
+RETRY_AFTER_S = 5.0               # republish if mapd hasn't acknowledged
+KILL_AFTER_S = 30.0               # pkill mapd if it's still ignoring us
+PKILL_RECOVERY_S = 8.0             # grace period for manager to respawn mapd
+MAPD_BINARY_PATH = "/data/media/0/osm/mapd"
 
 
 def build_paths(selection: dict) -> list[str]:
@@ -80,16 +94,35 @@ def progress_to_v1_json(extended_out) -> str:
   return json.dumps(payload, separators=(",", ":"))
 
 
+def kill_mapd_binary() -> bool:
+  """pkill -9 the mapd binary so manager respawns it fresh. Returns True on success."""
+  rc = os.system(f"sudo pkill -9 -f {MAPD_BINARY_PATH} >/dev/null 2>&1")
+  return rc == 0
+
+
 def main() -> None:
   pm = messaging.PubMaster(["mapdIn"])
   sm = messaging.SubMaster(["mapdExtendedOut"])
   params_persistent = Params()
+  # Let zmq sockets settle before the first publish; otherwise the boot-time
+  # OSMDownloadLocations write race can drop our very first mapdIn message.
+  time.sleep(PUBMASTER_SETTLE_S)
+
   last_locations: str | None = None
   last_progress_payload: str | None = None
   last_progress_active: bool = False
 
+  # Watchdog state for in-flight downloads.
+  pending_paths: list[str] | None = None
+  pending_publish_time: float = 0.0
+  pending_retried: bool = False
+
   while True:
+    now = time.monotonic()
+
+    # ------------------------------------------------------------------
     # 1) Translate UI param writes into mapdIn cereal commands.
+    # ------------------------------------------------------------------
     try:
       raw = params_memory.get("OSMDownloadLocations", encoding="utf-8")
     except Exception as exc:
@@ -109,8 +142,14 @@ def main() -> None:
         try:
           publish_download(pm, paths)
           print(f"mapd_bridge: requested download path={','.join(paths)}")
+          pending_paths = paths
+          pending_publish_time = now
+          pending_retried = False
         except Exception as exc:
           print(f"mapd_bridge: publish_download failed: {exc}")
+      else:
+        # Empty selection — nothing to do; clear any pending watchdog state.
+        pending_paths = None
       last_locations = raw
 
     elif not raw and last_locations:
@@ -120,12 +159,20 @@ def main() -> None:
       except Exception as exc:
         print(f"mapd_bridge: publish_cancel failed: {exc}")
       last_locations = None
+      pending_paths = None
+      pending_publish_time = 0.0
+      pending_retried = False
 
-    # 2) Mirror v2's mapdExtendedOut progress back into OSMDownloadProgress
-    #    so the v1-era UI keeps working without changes.
+    # ------------------------------------------------------------------
+    # 2) Drain mapdExtendedOut and mirror progress to OSMDownloadProgress.
+    # ------------------------------------------------------------------
     sm.update(0)
+    mapd_locations: list[str] = []
+    mapd_total_files = 0
     if sm.updated.get("mapdExtendedOut"):
       ext = sm["mapdExtendedOut"]
+      mapd_locations = [str(loc) for loc in ext.downloadProgress.locations]
+      mapd_total_files = int(ext.downloadProgress.totalFiles)
       try:
         payload = progress_to_v1_json(ext)
       except Exception as exc:
@@ -141,15 +188,42 @@ def main() -> None:
 
       active = bool(ext.downloadProgress.active)
       if last_progress_active and not active:
-        # Download just transitioned to inactive (completed or cancelled). Clear the
-        # progress param so the UI returns to the default "DOWNLOAD" state, matching
-        # v1's old behavior of removing OSMDownloadProgress on completion.
+        # Download transitioned to inactive (completed or cancelled). Clear the
+        # progress param so the UI returns to the default "DOWNLOAD" state.
         try:
           params_persistent.remove("OSMDownloadProgress")
           last_progress_payload = None
         except Exception as exc:
           print(f"mapd_bridge: OSMDownloadProgress remove failed: {exc}")
       last_progress_active = active
+
+    # ------------------------------------------------------------------
+    # 3) Watchdog: ensure mapd actually picked up our download request.
+    # ------------------------------------------------------------------
+    if pending_paths:
+      wanted = set(pending_paths)
+      acknowledged = bool(set(mapd_locations) & wanted) or mapd_total_files > 0
+      elapsed = now - pending_publish_time
+
+      if acknowledged:
+        pending_paths = None
+        pending_publish_time = 0.0
+        pending_retried = False
+      elif elapsed >= RETRY_AFTER_S and not pending_retried:
+        try:
+          publish_download(pm, pending_paths)
+          print(f"mapd_bridge: watchdog republish after {elapsed:.1f}s no-ack")
+          pending_retried = True
+        except Exception as exc:
+          print(f"mapd_bridge: watchdog republish failed: {exc}")
+      elif elapsed >= KILL_AFTER_S:
+        # mapd is stuck (likely the v2.0.6 cancel→retrigger deadlock). pkill the
+        # binary so manager respawns it fresh, then republish on next iteration.
+        print(f"mapd_bridge: watchdog kill mapd after {elapsed:.1f}s no-ack")
+        kill_mapd_binary()
+        # Push the next retry beyond the recovery window.
+        pending_publish_time = now + PKILL_RECOVERY_S - RETRY_AFTER_S
+        pending_retried = False
 
     time.sleep(POLL_INTERVAL_S)
 
