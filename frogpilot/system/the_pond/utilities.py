@@ -42,6 +42,8 @@ XOR_KEY = "s8#pL3*Xj!aZ@dWq"
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
+MAX_VIDEO_CACHE_BYTES = 2 * 1024 * 1024 * 1024
+
 def check_theme_components(theme_path):
   components = {
     "hasColors": False,
@@ -334,6 +336,41 @@ def encode_parameters(params_dict):
   encoded_data = base64.b64encode(obfuscated_data.encode("utf-8")).decode("utf-8")
   return encoded_data
 
+def prune_video_cache(reserve_bytes=0):
+  VIDEO_CACHE_PATH.mkdir(exist_ok=True)
+
+  entries = []
+  total = 0
+  for f in VIDEO_CACHE_PATH.glob("*.mp4"):
+    try:
+      st = f.stat()
+    except OSError:
+      continue
+    entries.append((st.st_atime, st.st_size, f))
+    total += st.st_size
+
+  if shutil.disk_usage(VIDEO_CACHE_PATH).free < 500 * 1024 * 1024:
+    for _, _, f in entries:
+      try:
+        f.unlink()
+      except OSError:
+        pass
+    return
+
+  budget = max(0, MAX_VIDEO_CACHE_BYTES - reserve_bytes)
+  if total <= budget:
+    return
+
+  entries.sort(key=lambda e: e[0])
+  for _, size, f in entries:
+    if total <= budget:
+      break
+    try:
+      f.unlink()
+      total -= size
+    except OSError:
+      pass
+
 def ffmpeg_concat_segments_to_mp4(input_files, cache_key=None):
   if not input_files:
     raise ValueError("No input files provided for concatenation")
@@ -348,6 +385,8 @@ def ffmpeg_concat_segments_to_mp4(input_files, cache_key=None):
 
   if cache_path.exists() and all(cache_path.stat().st_mtime > Path(f).stat().st_mtime for f in input_files):
     return open(cache_path, "rb")
+
+  prune_video_cache()
 
   list_file = VIDEO_CACHE_PATH / f"{file_hash}.txt"
   with open(list_file, "w") as f:
@@ -392,19 +431,13 @@ def ffmpeg_mp4_wrap_process_builder(filename):
 
   VIDEO_CACHE_PATH.mkdir(exist_ok=True)
 
-  total, used, free = shutil.disk_usage(VIDEO_CACHE_PATH)
-  if free < 500 * 1024 * 1024:
-    for cache_file in VIDEO_CACHE_PATH.glob("*.mp4"):
-      try:
-        cache_file.unlink()
-      except:
-        pass
-
   file_hash = hashlib.md5(str(input_path).encode()).hexdigest()
   cache_path = VIDEO_CACHE_PATH / f"{file_hash}.mp4"
 
   if cache_path.exists() and cache_path.stat().st_mtime > input_path.stat().st_mtime:
     return open(cache_path, "rb")
+
+  prune_video_cache()
 
   try:
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(input_path), "-c", "copy", "-movflags", "faststart", "-y", str(cache_path)], check=True)
