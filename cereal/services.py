@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations  # cn-mazda fork: defer annotation eval so dict[str, tuple] works on the device's system python3.8 build path
 from typing import Optional
 
 
@@ -104,6 +105,13 @@ _services: dict[str, tuple] = {
   "frogpilotOnroadEvents": (True, 1., 1),
   "frogpilotPlan": (True, 20., 5),
   "frogpilotRadarState": (True, 20., 5),
+
+  # mapd v2 (cn-mazda fork) — pfeiferj/openpilot-mapd v2.x
+  # mapdIn: event-driven download triggers (we publish via mapd_bridge.py)
+  # mapdOut / mapdExtendedOut: published by the mapd binary itself
+  "mapdIn": (False, 0., 1),
+  "mapdOut": (True, 10., 10),
+  "mapdExtendedOut": (True, 1., 1),
 }
 SERVICE_LIST = {name: Service(*vals) for
                 idx, (name, vals) in enumerate(_services.items())}

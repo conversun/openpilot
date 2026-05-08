@@ -1,0 +1,51 @@
+{
+  "nation": {
+    "CN": {
+      "full_name": "China",
+      "bounding_box": {"min_lon": 73.40, "min_lat": 17.90, "max_lon": 135.10, "max_lat": 53.60},
+      "submenu": "cn_province"
+    }
+  },
+
+  "cn_province": {
+    "BJ": {"full_name": "Beijing 北京",         "bounding_box": {"min_lon": 115.42, "min_lat": 39.44, "max_lon": 117.50, "max_lat": 41.06}},
+    "TJ": {"full_name": "Tianjin 天津",          "bounding_box": {"min_lon": 116.71, "min_lat": 38.55, "max_lon": 118.06, "max_lat": 40.25}},
+    "HE": {"full_name": "Hebei 河北",            "bounding_box": {"min_lon": 113.45, "min_lat": 36.05, "max_lon": 119.85, "max_lat": 42.62}},
+    "SX": {"full_name": "Shanxi 山西",           "bounding_box": {"min_lon": 110.22, "min_lat": 34.58, "max_lon": 114.58, "max_lat": 40.74}},
+    "NM": {"full_name": "Inner Mongolia 内蒙古", "bounding_box": {"min_lon":  97.17, "min_lat": 37.40, "max_lon": 126.07, "max_lat": 53.34}},
+
+    "LN": {"full_name": "Liaoning 辽宁",         "bounding_box": {"min_lon": 118.83, "min_lat": 38.72, "max_lon": 125.78, "max_lat": 43.43}},
+    "JL": {"full_name": "Jilin 吉林",            "bounding_box": {"min_lon": 121.63, "min_lat": 40.86, "max_lon": 131.31, "max_lat": 46.30}},
+    "HL": {"full_name": "Heilongjiang 黑龙江",   "bounding_box": {"min_lon": 121.18, "min_lat": 43.43, "max_lon": 135.09, "max_lat": 53.56}},
+
+    "SH": {"full_name": "Shanghai 上海",         "bounding_box": {"min_lon": 120.85, "min_lat": 30.68, "max_lon": 122.20, "max_lat": 31.88}},
+    "JS": {"full_name": "Jiangsu 江苏",          "bounding_box": {"min_lon": 116.36, "min_lat": 30.76, "max_lon": 121.95, "max_lat": 35.12}},
+    "ZJ": {"full_name": "Zhejiang 浙江",         "bounding_box": {"min_lon": 118.02, "min_lat": 27.04, "max_lon": 123.00, "max_lat": 31.18}},
+    "AH": {"full_name": "Anhui 安徽",            "bounding_box": {"min_lon": 114.90, "min_lat": 29.41, "max_lon": 119.65, "max_lat": 34.65}},
+    "FJ": {"full_name": "Fujian 福建",           "bounding_box": {"min_lon": 115.84, "min_lat": 23.55, "max_lon": 120.72, "max_lat": 28.32}},
+    "JX": {"full_name": "Jiangxi 江西",          "bounding_box": {"min_lon": 113.57, "min_lat": 24.49, "max_lon": 118.47, "max_lat": 30.08}},
+    "SD": {"full_name": "Shandong 山东",         "bounding_box": {"min_lon": 114.80, "min_lat": 34.38, "max_lon": 122.71, "max_lat": 38.40}},
+    "TW": {"full_name": "Taiwan 台湾",           "bounding_box": {"min_lon": 119.31, "min_lat": 21.90, "max_lon": 122.07, "max_lat": 26.39}},
+
+    "HA": {"full_name": "Henan 河南",            "bounding_box": {"min_lon": 110.36, "min_lat": 31.39, "max_lon": 116.65, "max_lat": 36.37}},
+    "HB": {"full_name": "Hubei 湖北",            "bounding_box": {"min_lon": 108.36, "min_lat": 29.03, "max_lon": 116.13, "max_lat": 33.27}},
+    "HN": {"full_name": "Hunan 湖南",            "bounding_box": {"min_lon": 108.78, "min_lat": 24.64, "max_lon": 114.26, "max_lat": 30.13}},
+    "GD": {"full_name": "Guangdong 广东",        "bounding_box": {"min_lon": 109.66, "min_lat": 20.21, "max_lon": 117.31, "max_lat": 25.52}},
+    "GX": {"full_name": "Guangxi 广西",          "bounding_box": {"min_lon": 104.46, "min_lat": 20.90, "max_lon": 112.06, "max_lat": 26.39}},
+    "HI": {"full_name": "Hainan 海南",           "bounding_box": {"min_lon": 108.62, "min_lat": 17.96, "max_lon": 111.05, "max_lat": 20.16}},
+    "HK": {"full_name": "Hong Kong 香港",        "bounding_box": {"min_lon": 113.83, "min_lat": 22.15, "max_lon": 114.51, "max_lat": 22.57}},
+    "MO": {"full_name": "Macao 澳门",            "bounding_box": {"min_lon": 113.52, "min_lat": 22.10, "max_lon": 113.60, "max_lat": 22.22}},
+
+    "CQ": {"full_name": "Chongqing 重庆",        "bounding_box": {"min_lon": 105.29, "min_lat": 28.16, "max_lon": 110.20, "max_lat": 32.20}},
+    "SC": {"full_name": "Sichuan 四川",          "bounding_box": {"min_lon":  97.35, "min_lat": 26.05, "max_lon": 108.55, "max_lat": 34.32}},
+    "GZ": {"full_name": "Guizhou 贵州",          "bounding_box": {"min_lon": 103.61, "min_lat": 24.62, "max_lon": 109.62, "max_lat": 29.22}},
+    "YN": {"full_name": "Yunnan 云南",           "bounding_box": {"min_lon":  97.53, "min_lat": 21.14, "max_lon": 106.20, "max_lat": 29.23}},
+    "XZ": {"full_name": "Tibet 西藏",            "bounding_box": {"min_lon":  78.40, "min_lat": 26.85, "max_lon":  99.13, "max_lat": 36.50}},
+
+    "SN": {"full_name": "Shaanxi 陕西",          "bounding_box": {"min_lon": 105.49, "min_lat": 31.71, "max_lon": 111.25, "max_lat": 39.59}},
+    "GS": {"full_name": "Gansu 甘肃",            "bounding_box": {"min_lon":  92.13, "min_lat": 32.59, "max_lon": 108.71, "max_lat": 42.80}},
+    "QH": {"full_name": "Qinghai 青海",          "bounding_box": {"min_lon":  89.35, "min_lat": 31.60, "max_lon": 103.07, "max_lat": 39.21}},
+    "NX": {"full_name": "Ningxia 宁夏",          "bounding_box": {"min_lon": 104.28, "min_lat": 35.24, "max_lon": 107.66, "max_lat": 39.39}},
+    "XJ": {"full_name": "Xinjiang 新疆",         "bounding_box": {"min_lon":  73.45, "min_lat": 34.34, "max_lon":  96.40, "max_lat": 49.18}}
+  }
+}

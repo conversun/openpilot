@@ -6,39 +6,38 @@
 
 #include "frogpilot/ui/qt/widgets/frogpilot_controls.h"
 
-inline QMap<QString, QString> midwestMap = {
-  {"IL", "Illinois"}, {"IN", "Indiana"}, {"IA", "Iowa"},
-  {"KS", "Kansas"}, {"MI", "Michigan"}, {"MN", "Minnesota"},
-  {"MO", "Missouri"}, {"NE", "Nebraska"}, {"ND", "North Dakota"},
-  {"OH", "Ohio"}, {"SD", "South Dakota"}, {"WI", "Wisconsin"}
+// cn-mazda fork: "states" tab repurposed as Chinese province selector.
+// Codes match keys in frogpilot/navigation/mapd_download_menu.json (cn_province section).
+// Display strings use "English 中文" for clarity in the FrogPilot maps panel.
+inline QMap<QString, QString> northChinaMap = {
+  {"BJ", "Beijing 北京"}, {"TJ", "Tianjin 天津"}, {"HE", "Hebei 河北"},
+  {"SX", "Shanxi 山西"}, {"NM", "Inner Mongolia 内蒙古"}
 };
 
-inline QMap<QString, QString> northeastMap = {
-  {"CT", "Connecticut"}, {"ME", "Maine"}, {"MA", "Massachusetts"},
-  {"NH", "New Hampshire"}, {"NJ", "New Jersey"}, {"NY", "New York"},
-  {"PA", "Pennsylvania"}, {"RI", "Rhode Island"}, {"VT", "Vermont"}
+inline QMap<QString, QString> northeastChinaMap = {
+  {"LN", "Liaoning 辽宁"}, {"JL", "Jilin 吉林"}, {"HL", "Heilongjiang 黑龙江"}
 };
 
-inline QMap<QString, QString> southMap = {
-  {"AL", "Alabama"}, {"AR", "Arkansas"}, {"DE", "Delaware"},
-  {"DC", "District of Columbia"}, {"FL", "Florida"}, {"GA", "Georgia"},
-  {"KY", "Kentucky"}, {"LA", "Louisiana"}, {"MD", "Maryland"},
-  {"MS", "Mississippi"}, {"NC", "North Carolina"}, {"OK", "Oklahoma"},
-  {"SC", "South Carolina"}, {"TN", "Tennessee"}, {"TX", "Texas"},
-  {"VA", "Virginia"}, {"WV", "West Virginia"}
+inline QMap<QString, QString> eastChinaMap = {
+  {"SH", "Shanghai 上海"}, {"JS", "Jiangsu 江苏"}, {"ZJ", "Zhejiang 浙江"},
+  {"AH", "Anhui 安徽"}, {"FJ", "Fujian 福建"}, {"JX", "Jiangxi 江西"},
+  {"SD", "Shandong 山东"}, {"TW", "Taiwan 台湾"}
 };
 
-inline QMap<QString, QString> westMap = {
-  {"AK", "Alaska"}, {"AZ", "Arizona"}, {"CA", "California"},
-  {"CO", "Colorado"}, {"HI", "Hawaii"}, {"ID", "Idaho"},
-  {"MT", "Montana"}, {"NV", "Nevada"}, {"NM", "New Mexico"},
-  {"OR", "Oregon"}, {"UT", "Utah"}, {"WA", "Washington"},
-  {"WY", "Wyoming"}
+inline QMap<QString, QString> southCentralChinaMap = {
+  {"HA", "Henan 河南"}, {"HB", "Hubei 湖北"}, {"HN", "Hunan 湖南"},
+  {"GD", "Guangdong 广东"}, {"GX", "Guangxi 广西"}, {"HI", "Hainan 海南"},
+  {"HK", "Hong Kong 香港"}, {"MO", "Macao 澳门"}
 };
 
-inline QMap<QString, QString> territoriesMap = {
-  {"AS", "American Samoa"}, {"GU", "Guam"}, {"MP", "Northern Mariana Islands"},
-  {"PR", "Puerto Rico"}, {"VI", "Virgin Islands"}
+inline QMap<QString, QString> southwestChinaMap = {
+  {"CQ", "Chongqing 重庆"}, {"SC", "Sichuan 四川"}, {"GZ", "Guizhou 贵州"},
+  {"YN", "Yunnan 云南"}, {"XZ", "Tibet 西藏"}
+};
+
+inline QMap<QString, QString> northwestChinaMap = {
+  {"SN", "Shaanxi 陕西"}, {"GS", "Gansu 甘肃"}, {"QH", "Qinghai 青海"},
+  {"NX", "Ningxia 宁夏"}, {"XJ", "Xinjiang 新疆"}
 };
 
 inline QMap<QString, QString> africaMap = {

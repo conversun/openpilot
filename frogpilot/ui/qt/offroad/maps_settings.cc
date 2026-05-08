@@ -42,8 +42,8 @@ FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPi
   settingsList->addItem(lastMapsDownload = new LabelControl(tr("Last Updated"), params.get("LastMapsUpdate").empty() ? "Never" : QString::fromStdString(params.get("LastMapsUpdate"))));
 
   selectMaps = new FrogPilotButtonsControl(tr("Map Sources"),
-                                           tr("<b>Select the countries or U.S. states to use with \"Speed Limit Controller\".</b>") ,
-                                              "", {tr("COUNTRIES"), tr("STATES")});
+                                           tr("<b>Select the countries or Chinese provinces to use with \"Speed Limit Controller\".</b>") ,
+                                              "", {tr("COUNTRIES"), tr("PROVINCES")});
   QObject::connect(selectMaps, &FrogPilotButtonsControl::buttonClicked, [mapsLayout, this](int id) {
     mapsLayout->setCurrentIndex(id + 1);
 
@@ -123,22 +123,26 @@ FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPi
   ScrollView *countryMapsPanel = new ScrollView(countriesList, this);
   mapsLayout->addWidget(countryMapsPanel);
 
-  FrogPilotListWidget *statesList = new FrogPilotListWidget(this);
-  std::vector<std::pair<QString, QMap<QString, QString>>> states = {
-    {tr("United States - Midwest"), midwestMap},
-    {tr("United States - Northeast"), northeastMap},
-    {tr("United States - South"), southMap},
-    {tr("United States - West"), westMap},
-    {tr("United States - Territories"), territoriesMap}
+  // cn-mazda fork: "states" tab repurposed for Chinese provinces (6 regions, 34 administrative divisions).
+  // The MapsSelected JSON key remains "states" for backwards compat with v1.12.0 binary's hardcoded Go struct tag;
+  // mapd_bridge.py translates "states" entries to cn_province.* dot-paths when publishing mapdIn cereal (v2 path).
+  FrogPilotListWidget *provincesList = new FrogPilotListWidget(this);
+  std::vector<std::pair<QString, QMap<QString, QString>>> provinces = {
+    {tr("China - North \u534e\u5317"),         northChinaMap},
+    {tr("China - Northeast \u4e1c\u5317"),     northeastChinaMap},
+    {tr("China - East \u534e\u4e1c"),          eastChinaMap},
+    {tr("China - South Central \u4e2d\u5357"), southCentralChinaMap},
+    {tr("China - Southwest \u897f\u5357"),     southwestChinaMap},
+    {tr("China - Northwest \u897f\u5317"),     northwestChinaMap}
   };
 
-  for (std::pair<QString, QMap<QString, QString>> state : states) {
-    statesList->addItem(new LabelControl(state.first, ""));
-    statesList->addItem(new MapSelectionControl(state.second));
+  for (std::pair<QString, QMap<QString, QString>> province : provinces) {
+    provincesList->addItem(new LabelControl(province.first, ""));
+    provincesList->addItem(new MapSelectionControl(province.second));
   }
 
-  ScrollView *stateMapsPanel = new ScrollView(statesList, this);
-  mapsLayout->addWidget(stateMapsPanel);
+  ScrollView *provinceMapsPanel = new ScrollView(provincesList, this);
+  mapsLayout->addWidget(provinceMapsPanel);
 
   QObject::connect(parent, &FrogPilotSettingsWindow::closeSubPanel, [mapsLayout, settingsPanel, this] {
     if (forceOpenDescriptions) {

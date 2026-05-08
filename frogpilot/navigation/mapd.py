@@ -16,10 +16,21 @@ from openpilot.frogpilot.common.frogpilot_variables import MAPD_PATH, RESOURCES_
 
 VERSION = "v2"
 
+# cn-mazda fork override: upstream FrogAi/FrogPilot-Resources/Versions/mapd_version_v2.json
+# is stale (still pins v1.12.0) so devices never auto-upgrade past the v1 era. We hard-pin
+# the v2 binary release we have validated against our custom mapd_download_menu.json.
+# Bump this in lockstep with menu schema changes after re-testing on a device.
+MAPD_VERSION_OVERRIDE = "v2.0.6"
+
 GITHUB_VERSION_URL = f"https://github.com/{RESOURCES_REPO}/raw/Versions/mapd_version_{VERSION}.json"
 GITLAB_VERSION_URL = f"https://gitlab.com/{RESOURCES_REPO}/-/raw/Versions/mapd_version_{VERSION}.json"
 
 VERSION_PATH = Path("/data/media/0/osm/mapd_version")
+
+# cn-mazda fork: ship a custom download menu (Chinese provinces) and deploy it where
+# the mapd v2 binary picks up overrides at startup.
+MENU_SOURCE_PATH = Path(__file__).resolve().parent / "mapd_download_menu.json"
+MENU_DEPLOY_PATH = Path("/data/openpilot/mapd_download_menu.json")
 
 def cleanup_temp_files():
   parent = MAPD_PATH.parent
@@ -40,6 +51,24 @@ def cleanup_temp_files():
           print(f"Failed to delete leftover file {file}: {exception}")
   except OSError as exception:
     print(f"Skipping cleanup in {parent} due to I/O error: {exception}")
+
+def deploy_download_menu():
+  # cn-mazda fork: copy our custom menu (Chinese provinces) into the location
+  # the mapd v2 binary checks at startup. Idempotent — only writes if content changed.
+  if not MENU_SOURCE_PATH.is_file():
+    print(f"Menu source missing at {MENU_SOURCE_PATH}; skipping deploy")
+    return
+  try:
+    MENU_DEPLOY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    desired = MENU_SOURCE_PATH.read_bytes()
+    if MENU_DEPLOY_PATH.is_file() and MENU_DEPLOY_PATH.read_bytes() == desired:
+      return
+    tmp = MENU_DEPLOY_PATH.with_suffix(MENU_DEPLOY_PATH.suffix + ".tmp")
+    tmp.write_bytes(desired)
+    os.replace(tmp, MENU_DEPLOY_PATH)
+    print(f"Deployed mapd_download_menu.json -> {MENU_DEPLOY_PATH}")
+  except Exception as exception:
+    print(f"Failed to deploy mapd download menu: {exception}")
 
 def download():
   Path(MAPD_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -74,6 +103,11 @@ def download():
         temp_file_path.unlink(missing_ok=True)
 
 def get_latest_version():
+  # cn-mazda fork: ignore the upstream version JSON (it pins v1.12.0 indefinitely)
+  # and return our hard-coded v2 release. Kept the URL constants for future re-enablement.
+  if MAPD_VERSION_OVERRIDE:
+    return MAPD_VERSION_OVERRIDE
+
   while not (is_url_pingable("https://github.com") or is_url_pingable("https://gitlab.com")):
     time.sleep(60)
 
@@ -132,6 +166,11 @@ def mapd_thread():
     while not update_mapd():
       time.sleep(60)
       continue
+
+    try:
+      deploy_download_menu()
+    except Exception as exception:
+      print(f"deploy_download_menu errored: {exception}")
 
     try:
       process = subprocess.Popen(str(MAPD_PATH))

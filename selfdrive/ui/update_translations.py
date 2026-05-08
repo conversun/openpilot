@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations  # cn-mazda fork: required to evaluate 3.10+ union syntax on the device's system python3.8.
 import argparse
 import json
 import os

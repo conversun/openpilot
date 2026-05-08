@@ -2418,6 +2418,28 @@ struct Event {
     frogpilotPlan @115 :Custom.FrogPilotPlan;
     frogpilotRadarState @116 :Custom.FrogPilotRadarState;
 
+    # *********** mapd v2 (cn-mazda fork) ***********
+    # IDs locked to pfeiferj/openpilot-mapd v2.x cereal/log.capnp slot assignments;
+    # changing these breaks wire compat with the prebuilt mapd binary. Capnp 1.4
+    # requires sequential union ordinals so we pad slots 131..142 with Void
+    # placeholders — these are unused locally and harmless on the wire because we
+    # never publish or subscribe to them.
+    reservedSlot131 @131 :Void;
+    reservedSlot132 @132 :Void;
+    reservedSlot133 @133 :Void;
+    reservedSlot134 @134 :Void;
+    reservedSlot135 @135 :Void;
+    reservedSlot136 @136 :Void;
+    reservedSlot137 @137 :Void;
+    reservedSlot138 @138 :Void;
+    reservedSlot139 @139 :Void;
+    reservedSlot140 @140 :Void;
+    reservedSlot141 @141 :Void;
+    reservedSlot142 @142 :Void;
+    mapdExtendedOut @143 :Custom.MapdExtendedOut;
+    mapdIn @144 :Custom.MapdIn;
+    mapdOut @145 :Custom.MapdOut;
+
     # *********** legacy + deprecated ***********
     model @9 :Legacy.ModelData; # TODO: rename modelV2 and mark this as deprecated
     liveMpcDEPRECATED @36 :LiveMpcData;
