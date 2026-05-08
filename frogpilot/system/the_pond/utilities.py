@@ -365,23 +365,29 @@ def prune_screen_recordings_under_pressure(target_free_bytes=2 * 1024 * 1024 * 1
                                             trigger_free_bytes=1024 * 1024 * 1024):
   if not SCREEN_RECORDINGS_PATH.exists():
     return
-  if shutil.disk_usage(SCREEN_RECORDINGS_PATH).free >= trigger_free_bytes:
+  free = shutil.disk_usage(SCREEN_RECORDINGS_PATH).free
+  if free >= trigger_free_bytes:
     return
 
   recordings = []
   for f in SCREEN_RECORDINGS_PATH.glob("*.mp4"):
+    if Path(f"{f}.lock").exists():
+      continue
     try:
       st = f.stat()
     except OSError:
       continue
-    recordings.append((st.st_mtime, f))
+    recordings.append((st.st_mtime, st.st_size, f))
   recordings.sort(key=lambda r: r[0])
 
-  for _, mp4 in recordings:
-    if shutil.disk_usage(SCREEN_RECORDINGS_PATH).free >= target_free_bytes:
+  for _, size, mp4 in recordings:
+    if free >= target_free_bytes:
       break
+    if Path(f"{mp4}.lock").exists():
+      continue
     try:
       mp4.unlink()
+      free += size
       for ext in (".png", ".gif"):
         thumb = mp4.with_suffix(ext)
         thumb.unlink(missing_ok=True)
