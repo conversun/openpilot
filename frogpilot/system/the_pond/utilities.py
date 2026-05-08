@@ -46,7 +46,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 
 MAX_VIDEO_CACHE_BYTES = 2 * 1024 * 1024 * 1024
 
-STALE_TEMP_AGE_SECONDS = 3600
+STALE_TEMP_AGE_SECONDS = 6 * 3600
 
 _VIDEO_CACHE_PRUNE_LOCK = threading.Lock()
 _VIDEO_CACHE_KEY_LOCKS: dict[str, threading.Lock] = {}
@@ -456,12 +456,13 @@ def ffmpeg_concat_segments_to_mp4(input_files, cache_key=None):
   cache_path = VIDEO_CACHE_PATH / f"{file_hash}.mp4"
 
   with _video_cache_key_lock(file_hash):
-    if cache_path.exists() and all(cache_path.stat().st_mtime > Path(f).stat().st_mtime for f in input_files):
-      try:
-        os.utime(cache_path, None)
-      except OSError:
-        pass
-      return open(cache_path, "rb")
+    with _VIDEO_CACHE_PRUNE_LOCK:
+      if cache_path.exists() and all(cache_path.stat().st_mtime > Path(f).stat().st_mtime for f in input_files):
+        try:
+          os.utime(cache_path, None)
+        except OSError:
+          pass
+        return open(cache_path, "rb")
 
     prune_video_cache()
 
@@ -518,12 +519,13 @@ def ffmpeg_mp4_wrap_process_builder(filename):
   cache_path = VIDEO_CACHE_PATH / f"{file_hash}.mp4"
 
   with _video_cache_key_lock(file_hash):
-    if cache_path.exists() and cache_path.stat().st_mtime > input_path.stat().st_mtime:
-      try:
-        os.utime(cache_path, None)
-      except OSError:
-        pass
-      return open(cache_path, "rb")
+    with _VIDEO_CACHE_PRUNE_LOCK:
+      if cache_path.exists() and cache_path.stat().st_mtime > input_path.stat().st_mtime:
+        try:
+          os.utime(cache_path, None)
+        except OSError:
+          pass
+        return open(cache_path, "rb")
 
     prune_video_cache()
 
