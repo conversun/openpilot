@@ -34,7 +34,12 @@ import time
 import cereal.messaging as messaging
 
 from openpilot.common.params import Params
-from openpilot.frogpilot.common.frogpilot_variables import params_memory
+
+# Construct params_memory locally instead of `from frogpilot_variables import params_memory`.
+# That import path triggers a circular dependency (frogpilot_variables -> car_helpers ->
+# sentry -> frogpilot_variables) when this module is loaded as a fresh PythonProcess by
+# manager.py, crashing the daemon at startup so manager never respawns it.
+params_memory = Params("/dev/shm/params")
 
 POLL_INTERVAL_S = 1.0
 PUBMASTER_SETTLE_S = 1.0          # let zmq sockets bind before first publish
