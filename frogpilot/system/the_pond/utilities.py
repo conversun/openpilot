@@ -49,6 +49,7 @@ MAX_VIDEO_CACHE_BYTES = 2 * 1024 * 1024 * 1024
 THEME_TEMP_MARKER = ".the_pond_theme_tmp"
 
 STALE_TEMP_AGE_SECONDS = 6 * 3600
+RECORDING_QUIESCE_SECONDS = 60
 
 _VIDEO_CACHE_PRUNE_LOCK = threading.Lock()
 _VIDEO_CACHE_KEY_LOCKS: dict[str, threading.Lock] = {}
@@ -369,6 +370,8 @@ def prune_screen_recordings_under_pressure(target_free_bytes=2 * 1024 * 1024 * 1
   if free >= trigger_free_bytes:
     return
 
+  now = time.time()
+
   recordings = []
   for f in SCREEN_RECORDINGS_PATH.glob("*.mp4"):
     if Path(f"{f}.lock").exists():
@@ -376,6 +379,8 @@ def prune_screen_recordings_under_pressure(target_free_bytes=2 * 1024 * 1024 * 1
     try:
       st = f.stat()
     except OSError:
+      continue
+    if now - st.st_mtime < RECORDING_QUIESCE_SECONDS:
       continue
     recordings.append((st.st_mtime, st.st_size, f))
   recordings.sort(key=lambda r: r[0])
