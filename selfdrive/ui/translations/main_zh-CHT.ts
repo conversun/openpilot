@@ -2824,6 +2824,38 @@
         <source>Not parked</source>
         <translation type="gpt-5-generated">未停車</translation>
     </message>
+    <message>
+        <source>&lt;b&gt;Select the countries or Chinese provinces to use with "Speed Limit Controller".&lt;/b&gt;</source>
+        <translation type="gpt-5-generated">&lt;b&gt;選取要搭配「Speed Limit Controller」使用的國家或中國省份。&lt;/b&gt;</translation>
+    </message>
+    <message>
+        <source>PROVINCES</source>
+        <translation type="gpt-5-generated">省份</translation>
+    </message>
+    <message>
+        <source>China - North</source>
+        <translation type="gpt-5-generated">華北</translation>
+    </message>
+    <message>
+        <source>China - Northeast</source>
+        <translation type="gpt-5-generated">東北</translation>
+    </message>
+    <message>
+        <source>China - East</source>
+        <translation type="gpt-5-generated">華東</translation>
+    </message>
+    <message>
+        <source>China - South Central</source>
+        <translation type="gpt-5-generated">中南</translation>
+    </message>
+    <message>
+        <source>China - Southwest</source>
+        <translation type="gpt-5-generated">西南</translation>
+    </message>
+    <message>
+        <source>China - Northwest</source>
+        <translation type="gpt-5-generated">西北</translation>
+    </message>
 </context>
 <context>
     <name>FrogPilotModelPanel</name>

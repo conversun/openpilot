@@ -128,12 +128,12 @@ FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPi
   // mapd_bridge.py translates "states" entries to cn_province.* dot-paths when publishing mapdIn cereal (v2 path).
   FrogPilotListWidget *provincesList = new FrogPilotListWidget(this);
   std::vector<std::pair<QString, QMap<QString, QString>>> provinces = {
-    {tr("China - North \u534e\u5317"),         northChinaMap},
-    {tr("China - Northeast \u4e1c\u5317"),     northeastChinaMap},
-    {tr("China - East \u534e\u4e1c"),          eastChinaMap},
-    {tr("China - South Central \u4e2d\u5357"), southCentralChinaMap},
-    {tr("China - Southwest \u897f\u5357"),     southwestChinaMap},
-    {tr("China - Northwest \u897f\u5317"),     northwestChinaMap}
+    {tr("China - North"),         northChinaMap},
+    {tr("China - Northeast"),     northeastChinaMap},
+    {tr("China - East"),          eastChinaMap},
+    {tr("China - South Central"), southCentralChinaMap},
+    {tr("China - Southwest"),     southwestChinaMap},
+    {tr("China - Northwest"),     northwestChinaMap}
   };
 
   for (std::pair<QString, QMap<QString, QString>> province : provinces) {
