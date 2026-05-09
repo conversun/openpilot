@@ -8,7 +8,21 @@
 
 ## Executive Summary
 
-This port migrates the `MAZDA_3_2019` (GEN2 + TI2) car implementation from a FrogPilot-based fork (`openpilot-more/mazda-frogpilot`) to the current commaai/openpilot upstream architecture across three repositories: `openpilot-comma`, `opendbc_repo`, and `panda`. The migration required absorbing 12 distinct architecture changes (see section 5). All code is complete and verified locally (79/0 panda safety pytest, import smoke, static scrub). On-vehicle validation (CP-A lateral, CP-B TI, CP-C ACC) is the only remaining gate before daily use. Current status: **code-complete, LOCAL_PASS, awaiting on-vehicle CP-A**.
+This port migrates the `MAZDA_3_2019` (GEN2 + TI2) car implementation from a FrogPilot-based fork (`openpilot-more/mazda-frogpilot`) to the current commaai/openpilot upstream architecture across three repositories: `openpilot-comma`, `opendbc_repo`, and `panda`. The migration required absorbing 12 distinct architecture changes (see section 5). All code is complete and verified locally (79/0 panda safety pytest, import smoke, static scrub). On-vehicle validation (CP-A lateral, CP-B TI, CP-C ACC) is the only remaining gate before daily use. Current status: **code-complete v0.0.2 with 3 pre-flight hotfixes; LOCAL_PASS (panda safety pytest 79/0/15 post-T18b); on-vehicle CP-A pending. v0.0.1 was retracted before any drive.**
+
+---
+
+## Hotfix v0.0.2 (2026-05-09)
+
+Three pre-flight fixes applied before first drive. Tag `v0.11.1-mazda3-2019.0.1` was retracted; `v0.11.1-mazda3-2019.0.2` is the current recovery point.
+
+| Fix | Repo | SHA | Description |
+|-----|------|-----|-------------|
+| F1 | panda | `251bdf57` | `len` variable declared inside bus==1 ignition hook block (was shadowing outer scope) |
+| F2 | opendbc | `daa49373` | TI fault transient/permanent split: only ERROR/CRITICAL_ERROR latch permanent; INIT/STANDBY/OFF auto-recover |
+| F3 | opendbc | `daa49373` | `alphaLongitudinalAvailable` set to `False` until ACCEL_CMD plumbing ported from source fork |
+
+Parent bump commit: `698fb9c2d` — submodule: bump opendbc_repo + panda for v0.0.2 hotfixes
 
 ---
 
@@ -50,8 +64,10 @@ Wave 5 PASS-WITH-NOTES: two benign FrogPilot provenance comments in `values.py` 
 | `66954064b` | 6 | mazda: wave 6 build + safety verification |
 | `55389aaa6` | 7 | submodule: bump opendbc_repo for mazda safety test skip rule |
 | `3dacf62c7` | 7 | mazda: wave 7 on-vehicle bring-up checklist + cabana capture |
+| `f9a977bf4` | 8 | mazda: wave 8 migration guide + rebase playbook + v0.1 tag |
+| `698fb9c2d` | hotfix | submodule: bump opendbc_repo + panda for v0.0.2 hotfixes |
 
-HEAD at Wave 8 start: `3dacf62c7`
+HEAD at v0.0.2: `698fb9c2d`
 
 ### opendbc_repo — branch `mazda-port-additions`
 
@@ -68,16 +84,18 @@ HEAD at Wave 8 start: `3dacf62c7`
 | `8773621e` | 4 | T11 | mazda: extend carstate.py for MAZDA_3_2019 (GEN2 + TI feedback) |
 | `29db3c74` | 4.5 | T10b | mazda: expose ti_state and acc_values from GEN2 carstate for carcontroller |
 | `32716d8a` | 7 | T18b | safety/tests: skip wrong-safety-mode TX cross-tests for Mazda GEN2 sibling variants |
+| `daa49373` | hotfix | — | mazda: fix TI fault latch + disable alpha-long until ACCEL_CMD ported |
 
-HEAD at Wave 8 start: `32716d8a`
+HEAD at v0.0.2: `daa49373`
 
 ### panda — branch `mazda-port-additions`
 
 | SHA | Wave | Task | Subject |
 |-----|------|------|---------|
 | `066ca435` | 1 | T6 | mazda: add GEN2 + TI flag constants and ignition addr |
+| `251bdf57` | hotfix | — | mazda: declare len inside bus==1 ignition hook block |
 
-HEAD at Wave 8 start: `066ca435`
+HEAD at v0.0.2: `251bdf57`
 
 ---
 
@@ -347,8 +365,16 @@ v0.1 is a "code-complete, on-vehicle pending" tag. It is not a "validated for da
 
 ## Final Sign-Off
 
-**Wave 8 / port complete: code-complete, LOCAL_PASS, awaiting on-vehicle CP-A**
+**Wave 8 + v0.0.2 hotfix: code-complete, LOCAL_PASS (79/0/15), awaiting on-vehicle CP-A**
 
-*openpilot-comma `mazda-port` HEAD: `3dacf62c7` (pre-T22 commit)*  
-*opendbc_repo `mazda-port-additions` HEAD: `32716d8a`*  
-*panda `mazda-port-additions` HEAD: `066ca435`*
+*openpilot-comma `mazda-port` HEAD: `698fb9c2d`*  
+*opendbc_repo `mazda-port-additions` HEAD: `daa49373`*  
+*panda `mazda-port-additions` HEAD: `251bdf57`*
+
+---
+
+## Cross-References
+
+- **AGENTS.md** (repo root) — AI agent entry point; read first in any new session
+- **docs/migration/DECISIONS.md** — ADR log; rationale for every architectural choice
+- **docs/migration/ROADMAP.md** — forward plan; P0 (CP-A) through P4 (routes.py)
